@@ -1,0 +1,90 @@
+package com.remixlang.examples.chat
+
+export chat
+
+chat = component
+  subcomponent nodeStdio console mockClient
+  wire nodeStdio.io console.rawIo
+  wire console.console mockClient.commands
+
+nodeStdio = component
+  port io
+    output fromStdin String
+    input toStdout String
+
+  daemon [javascript fromStdin|
+     process.stdin.resume();
+     process.stdin.setEncoding('utf8');
+
+     process.stdin.on('data', function (chunk) {
+       fromStdin(chunk);
+     });
+    |]
+
+  on toStdout [javascript toStdout|
+      process.stdout.write(toStdout);
+    |]
+
+console = component
+  var partialLine := ""
+
+  port rawIo
+    input fromStdin String
+    output toStdout String
+
+    on fromStdin do
+      if not fromStdin.empty then do
+        var lines := fromStdin.split (regex "\n")
+        lines[0] := partialLine ++ lines[0]
+        n = lines.length
+        trailingNewline = fromStdin.endsWith "\n"
+        partialLine := ""
+        for i in 0..n do
+          if i < n-1 || trailingNewline then do
+            console.fromStdin := lines[i]
+          else do
+            partialLine := lines[i]
+
+  port console
+    output fromStdin String
+    input toStdout String
+
+    on toStdout do
+      rawIo.toStdout := toStdout
+
+mockClient = component 
+  var history := emptyChatHistory
+
+  port commands
+    input command String
+    output response String
+
+    on command do
+      case parseVerb command 
+        Some "history" -> do
+          response := history.prettyPrint
+        Some "clear" -> do
+          history .= clear
+          response := "History cleared."
+        _ -> do
+          response := "You said: " ++ command
+          
+      history .= add command response
+
+type ChatHistory = struct
+  interactions :: [Interaction]
+  
+  add :: String -> String -> ChatHistory
+  add command response = this { interactions += Interaction command response }
+
+  clear :: ChatHistory
+  clear = emptyChatHistory
+
+emptyChatHistory :: ChatHistory
+emptyChatHistory = ChatHistory { interactions = [] }
+
+type Interaction = struct
+  command :: String
+  response :: String
+  
+
