@@ -1,18 +1,19 @@
 package com.remixlang.examples.chat
 
-export chat
+export Chat
 
-chat = component
-  subcomponent nodeStdio console mockClient
-  wire nodeStdio.io console.rawIo
-  wire console.console mockClient.commands
+type Chat = component
+  hasA Console withA NodeStdio
+  hasA MockClient
 
-nodeStdio = component
+type RawStdio = abstract component
   port io
-    output fromStdin String
-    input toStdout String
+    output fromStdin :: String
+    input toStdout :: String
 
-  daemon [javascript fromStdin|
+type NodeStdio = RawStdio => component
+
+  daemon [javaScript fromStdin|
      process.stdin.resume();
      process.stdin.setEncoding('utf8');
 
@@ -21,70 +22,115 @@ nodeStdio = component
      });
     |]
 
-  on toStdout [javascript toStdout|
-      process.stdout.write(toStdout);
-    |]
+  port io
+    on toStdout [javascript toStdout|
+        process.stdout.write(toStdout);
+      |]
 
-console = component
+type Console = component
+  hasA RawStdio
+
   var partialLine := ""
 
   port rawIo
-    input fromStdin String
-    output toStdout String
+    input fromStdin :: String
+    output toStdout :: String
 
-    on fromStdin do
-      if not fromStdin.empty then do
+    on fromStdin
+      if not fromStdin.empty then
         var lines := fromStdin.split (regex "\n")
         lines[0] := partialLine ++ lines[0]
         n = lines.length
         trailingNewline = fromStdin.endsWith "\n"
         partialLine := ""
-        for i in 0..n do
-          if i < n-1 || trailingNewline then do
+        for i <- 0..n yield do
+          if i < n-1 || trailingNewline then
             console.fromStdin := lines[i]
-          else do
+          else
             partialLine := lines[i]
 
   port console
-    output fromStdin String
-    input toStdout String
+    output fromStdin :: String
+    input toStdout :: String
 
-    on toStdout do
+    on toStdout
       rawIo.toStdout := toStdout
 
-mockClient = component 
-  var history := emptyChatHistory
+type ChatClient = abstract component
+  port commands
+    input command :: String
+    output response :: String
+
+type MockClient = ChatClient => component
+  historyLength = 10
+  
+  var history := emptyChatHistory historyLength
 
   port commands
-    input command String
-    output response String
-
-    on command do
-      case parseVerb command 
-        Some "history" -> do
+    on command
+      case parseVerb command of
+        Some "help" ->
+          response :=
+            [stringWithNewlines
+             | ":history" shows chat history.
+             | ":clear" clears chat history.
+             |
+             | "!xyz" repeats the most recent command that started with "xyz".
+             | "?xyz" repeats the most recent command that contained "xyz".
+             |      (These can include punctuation such as ":".)
+             |
+             | Anything else is a message to be sent into the chat.
+             |]
+        Some "history" ->
           response := history.prettyPrint
-        Some "clear" -> do
+        Some "clear" ->
           history .= clear
           response := "History cleared."
-        _ -> do
-          response := "You said: " ++ command
+        _ ->
+          response := if command.startsWith "!" then
+            processCommand history.findMostRecentMatching (regex $ "^%s" format response[1..])
+          else if command.startsWith "?" then
+            processCommand history.findMostRecentMatching response[1..]
+          else
+            processCommand command
           
-      history .= add command response
+      history .= add $ Interaction command response
 
-type ChatHistory = struct
-  interactions :: [Interaction]
+type ChatHistory = PrettyPrintable => object
+  length :: Int
+  history :: [HistoryElement]
   
-  add :: String -> String -> ChatHistory
-  add command response = this { interactions += Interaction command response }
+  add :: HistoryElement -> ChatHistory
+  add e =
+    if history.length >= length then
+      history .= tail
+    history += e
 
   clear :: ChatHistory
-  clear = emptyChatHistory
+  clear = this { history = [] }
 
-emptyChatHistory :: ChatHistory
-emptyChatHistory = ChatHistory { interactions = [] }
+  prettyPrint = history.map prettyPrint .join "\n\n"
 
-type Interaction = struct
+  -- Intentionally demonstrating some language features here, although an abstract method would be prettier.
+  findMostRecentMatching :: (String | Regex) -> Boolean
+  findMostRecentMatching pat = history.reverse.find $ matches pat
+                               where matches rx elt = case cast elt of
+                                 Just interaction -> interaction.command.contains pat
+                                 _ -> false
+
+emptyChatHistory :: Int -> ChatHistory 
+emptyChatHistory length = ChatHistory
+  length = length
+  history = []
+
+type PrettyPrintable = abstract object
+  prettyPrint :: String
+
+type HistoryElement = PrettyPrintable => abstract
+
+type Interaction = HistoryElement => object
   command :: String
-  response :: String
-  
+  Response :: String
 
+  prettyPrint = "Command:  " ++ command ++ "\n" ++
+                "Response: " ++ response
