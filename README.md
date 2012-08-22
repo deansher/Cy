@@ -43,8 +43,8 @@ a space of algorithms that is dense in useful behaviors.
 
 License
 -------
-All files in this project (whether so marked or not) are subject to the Apache 2 license:
-http://www.apache.org/licenses/LICENSE-2.0.html
+All files in this project (whether so marked or not) are Copyright (c) Dean Thompson and
+subject to the Apache 2 license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 Documentation
 -------------
