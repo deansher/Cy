@@ -1,12 +1,21 @@
+module Remix.Parser (
+  parseTopLevelDecls
+) where
+
+import Remix.AbstractSyntaxTree (TopLevelDecl(..))
+
 import Text.Parsec
 import Text.Parsec.Prim
 import Text.Parsec.Token (GenTokenParser)
 import Text.Parsec.IndentParsec(runGIPT)
 
 import Control.Monad.Identity
+import Control.Monad (liftM)
 import Text.Parsec.Token (makeTokenParser, GenLanguageDef(..))
 import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
+
+import Data.List (intercalate)
 
 data Expr = Const Integer
           | Var String
@@ -33,41 +42,35 @@ langDef = LanguageDef { commentStart = "{-"
 tokP :: IT.GenIndentTokenParser HaskellLike String () Identity
 tokP = makeTokenParser langDef
 
+kwPackage = IT.reserved tokP "package"
 identifier = IT.identifier tokP
+dot = IT.reservedOp tokP "."
 integer = IT.integer tokP
 semiSep = IT.semiSepOrFoldedLines tokP
-kwWhere = IT.reserved tokP "where"
-assigns = IT.reservedOp tokP "="
+whiteSpace = IT.whiteSpace tokP
 
+parseTopLevelDecls :: String -> String -> Either ParseError [TopLevelDecl]
+parseTopLevelDecls sourceCode originName = parseRemix sourceCode originName topLevelDecls
 
-main = do inp <- getContents
-          let x = runGIPT prog () "<stdin>" inp
-              in case runIdentity x of
-                      Right bs -> sequence_ $ map print bs
-                      Left e -> do putStr "parse error: "
-                                   print e
+parseRemix :: String -> String -> ParserM a -> Either ParseError a
+parseRemix sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
 
-prog :: IndentParsecT String () Identity [Binding]
-prog = do IT.whiteSpace tokP
-          semiSep binding
+type ParserM a = IndentParsecT String () Identity a
 
-expression = fmap Const integer
-             <|> fmap Var identifier
-             <|> do e <- expression
-                    kwWhere
-                    bs <- IT.bracesBlock tokP bindings
-                    return $ WhereClause e bs
+topLevelDecls :: ParserM [TopLevelDecl]
+topLevelDecls = do whiteSpace
+                   semiSep topLevelDecl
 
-compoundExpression = do e <- expression
-                        whereBlock e
+topLevelDecl :: ParserM TopLevelDecl
+topLevelDecl = packageDecl
 
-whereBlock e = do try kwWhere
-                  bs <- IT.bracesBlock tokP bindings
-                  return $ WhereClause e bs
-               <|> return e
+packageDecl :: ParserM TopLevelDecl
+packageDecl = do
+  whiteSpace
+  kwPackage
+  name <- packageName
+  return $ PackageDecl name
 
-bindings = semiSep binding
-binding = do x <- identifier
-             assigns
-             e <- compoundExpression
-             return (x,e)
+packageName :: ParserM String
+packageName = liftM (intercalate ".") $ identifier `sepBy` dot
+
