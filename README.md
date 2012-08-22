@@ -10,7 +10,6 @@ Created by Dean Thompson.
 Goals
 -----
 The basic building blocks (pure functions and actors) are chosen to be easily and accurately composable.
-
 They are also highly testable.
 
 The language attempts to preserve the beauty of Haskell, but in a simpler and more approachable way.
@@ -32,9 +31,9 @@ being after-thoughts:
 
 - API contracts and testing.
 - Publishing, versioning, and dependency management.
-- License management.
+- Open-source license management.
 - Searching for components and functions that work in a particular context.
-- Human-readable data (all objects are JSON).
+- Human-readable data (all types have readable JSON representations).
 - Development-mode capture and playback of component and function inputs and outputs.
 - Suitability for long-term IDE and debugger development.
 
@@ -44,7 +43,8 @@ a space of algorithms that is dense in useful behaviors.
 
 License
 -------
-License is Apache 2: http://www.apache.org/licenses/LICENSE-2.0.html
+All files in this project (whether so marked or not) are subject to the Apache 2 license:
+http://www.apache.org/licenses/LICENSE-2.0.html
 
 Documentation
 -------------
