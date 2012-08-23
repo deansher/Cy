@@ -7,6 +7,8 @@
 *
 * ***** END LICENSE BLOCK ***** -}
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Remix.Parser (
   parseTopLevelDecls
 ) where
@@ -24,7 +26,9 @@ import Text.Parsec.Token (makeTokenParser, GenLanguageDef(..))
 import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
 
-import Data.List (intercalate)
+import Data.List (intercalate, intersperse)
+
+import Test.QuickCheck
 
 data Expr = Const Integer
           | Var String
@@ -83,3 +87,34 @@ packageDecl = do
 packageName :: ParserM String
 packageName = liftM (intercalate ".") $ identifier `sepBy` dot
 
+----------------------
+-- Test infrastructure
+
+class RandomFormattable a where
+  randomFormat :: Int -> a -> Gen String
+
+instance RandomFormattable [TopLevelDecl] where
+  randomFormat indent decls = do
+    plusIndent <- choose (0, 4) :: Gen Int
+    let declActions = map (randomFormat (indent + plusIndent)) decls
+        actions = intersperse (randomBlankLines indent) declActions
+    snippets <- sequence actions
+    return $ concat snippets
+
+instance RandomFormattable TopLevelDecl where
+  randomFormat indent (PackageDecl name) = do
+    let indentation = replicate indent ' '
+    white <- randomSpaces 1 4
+    return $ indentation ++ "package" ++ white ++ name ++ "\n"
+
+randomBlankLines :: Int -> Gen String
+randomBlankLines indent = do
+  n <- choose(1, 4) :: Gen Int
+  lines <- vectorOf n $ liftM (++ "\n") $ randomSpaces 0 (indent * 2) :: Gen [String]
+  return $ concat lines
+
+randomSpaces :: Int -> Int -> Gen String
+randomSpaces min max = do 
+  n <- choose(min, max) :: Gen Int
+  return $ replicate n ' '
+  
