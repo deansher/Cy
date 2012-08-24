@@ -17,7 +17,7 @@ import Data.List (intercalate)
 import Test.QuickCheck
 
 data TopLevelDecl = PackageDecl String
-  deriving (Show)
+  deriving (Eq, Show)
 
 data Identifier = Identifier String
 

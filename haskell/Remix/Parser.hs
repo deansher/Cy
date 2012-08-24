@@ -72,7 +72,9 @@ type ParserM a = IndentParsecT String () Identity a
 
 topLevelDecls :: ParserM [TopLevelDecl]
 topLevelDecls = do whiteSpace
-                   semiSep topLevelDecl
+                   decls <- semiSep topLevelDecl
+                   eof
+                   return decls
 
 topLevelDecl :: ParserM TopLevelDecl
 topLevelDecl = packageDecl
@@ -117,4 +119,15 @@ randomSpaces :: Int -> Int -> Gen String
 randomSpaces min max = do 
   n <- choose(min, max) :: Gen Int
   return $ replicate n ' '
-  
+
+prop_parseComposeFormatIsId :: [TopLevelDecl] -> Gen Property
+prop_parseComposeFormatIsId decls = do
+  indent <- choose(0, 4)
+  formatted <- randomFormat indent decls 
+  return $ case parseTopLevelDecls formatted "test input" of
+             Left e       -> printTestCase (show e ++ "\n\n" ++ formatted) False
+             Right decls' -> if decls' == decls
+                               then property True
+                               else printTestCase ("Original:  " ++ show decls ++ "\n\n" ++
+                                                   "Parsed as: " ++ show decls' ++ "\n\n" ++
+                                                   "Formatted as:" ++ "\n\n" ++ formatted) False
