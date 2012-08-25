@@ -7,7 +7,7 @@
 *
 * ***** END LICENSE BLOCK ***** -}
 
-module Remix.AbstractSyntaxTree (
+module Snappit.AbstractSyntaxTree (
   TopLevelDecl(..)
 ) where
 

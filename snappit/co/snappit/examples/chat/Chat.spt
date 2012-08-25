@@ -1,4 +1,4 @@
-package com.remixlang.examples.chat
+package co.snappit.examples.chat
 
 export Chat
 

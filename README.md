@@ -1,5 +1,5 @@
-Remix
-=====
+Snappit
+=======
 The "low haskell" software platform,
 where the functions are pure, the statements have effects, and the monads live in "for" statements.
 
@@ -16,7 +16,7 @@ The language attempts to preserve the beauty of Haskell, but in a simpler and mo
 Essentially, every function implicitly runs in an ST monad (Haskell's "state transformer"), with 
 language support for vars (variables) in that monad.  Instead of the IO monad, real-world effects
 are implemented as actors called "components".  Primitive IO operations are implemented underneath
-the Remix platform (in JavaScript) and wrapped in components.
+the Snappit platform (in JavaScript) and wrapped in components.
 
 Control-flow monads (such as Maybe or List) can be implemented for use in "for" statements.  So
 can any other kind of monad other than IO, but the built-in support for stateful effects through
@@ -48,4 +48,4 @@ subject to the Apache 2 license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 Documentation
 -------------
-See the notes directory for a rough pile of info.  Also see the remix directory for examples.
+See the notes directory for a rough pile of info.  Also see the snappit directory for examples.

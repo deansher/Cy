@@ -9,11 +9,11 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Remix.Parser (
+module Snappit.Parser (
   parseTopLevelDecls
 ) where
 
-import Remix.AbstractSyntaxTree (TopLevelDecl(..))
+import Snappit.AbstractSyntaxTree (TopLevelDecl(..))
 
 import Text.Parsec
 import Text.Parsec.Prim
@@ -63,10 +63,10 @@ semiSep = IT.semiSepOrFoldedLines tokP
 whiteSpace = IT.whiteSpace tokP
 
 parseTopLevelDecls :: String -> String -> Either ParseError [TopLevelDecl]
-parseTopLevelDecls sourceCode originName = parseRemix sourceCode originName topLevelDecls
+parseTopLevelDecls sourceCode originName = parseSnappit sourceCode originName topLevelDecls
 
-parseRemix :: String -> String -> ParserM a -> Either ParseError a
-parseRemix sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
+parseSnappit :: String -> String -> ParserM a -> Either ParseError a
+parseSnappit sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
 
 type ParserM a = IndentParsecT String () Identity a
 
