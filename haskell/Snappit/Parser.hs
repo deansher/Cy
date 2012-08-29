@@ -26,7 +26,7 @@ import Text.Parsec.Token (makeTokenParser, GenLanguageDef(..))
 import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
 
-import Data.List (intercalate, intersperse)
+import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
 import Test.QuickCheck
 
@@ -106,22 +106,91 @@ instance RandomFormattable [TopLevelDecl] where
 instance RandomFormattable TopLevelDecl where
   randomFormat indent (PackageDecl name) = do
     let indentation = replicate indent ' '
-    white <- randomSpaces 1 4
-    return $ indentation ++ "package" ++ white ++ name ++ "\n"
+    white <- randomHorizontalWhitespace
+    le <- lineEnding
+    return $ indentation ++ "package" ++ white ++ name ++ le
+
+randomHorizontalWhitespace :: Gen String
+randomHorizontalWhitespace = do
+  n <- choose(1, 10) :: Gen Int
+  if n > 1
+    then
+      randomSpaces 1 4
+    else do
+      s1 <- randomSpaces 0 2
+      s2 <- randomSpaces 0 2
+      c <- randomNestedComment
+      return $ s1 ++ (deleteMatching "\n" c) ++ s2
 
 randomBlankLines :: Int -> Gen String
 randomBlankLines indent = do
   n <- choose(1, 4) :: Gen Int
-  lines <- vectorOf n $ liftM (++ "\n") $ randomSpaces 0 (indent * 2) :: Gen [String]
+  lines <- vectorOf n lineEnding :: Gen [String]
   return $ concat lines
+
+lineEnding :: Gen String
+lineEnding = do
+  spaces <- randomSpaces 0 4
+  n <- choose(1, 10) :: Gen Int
+  if n <= 8
+    then return $ spaces ++ "\n"
+    else if n == 9
+           then do
+             text <- randomTextAvoiding ["\n"]
+             return $ spaces ++ "--" ++ text ++ "\n"
+           else do
+             le <- lineEnding
+             comment <- randomNestedComment
+             return $ spaces ++ comment ++ le
+
+randomNestedComment :: Gen String
+randomNestedComment = do
+  let curlyBuffer t = if "{" `isSuffixOf` t then " " else ""
+  text <- randomTextAvoiding ["-}", "{-"]
+  n <- choose(1, 10) :: Gen Int
+  if n > 1
+    then return $ "{-" ++ text ++ (curlyBuffer text) ++ "-}"
+    else do
+      text' <- randomTextAvoiding ["-}", "{-"]
+      nested <- randomNestedComment
+      return $ "{-" ++ text ++ nested ++ text' ++ (curlyBuffer text') ++ "-}"
+
+randomTextAvoiding :: [String] -> Gen String
+randomTextAvoiding substrings = do
+  n <- choose(0, 10)
+  raw <- vectorOf n arbitrary :: Gen String
+  return $ eliminateAll substrings raw
+
+eliminateAll :: Eq a => [[a]] -> [a] -> [a]
+eliminateAll subseqs xs =
+  firstFixedPoint (deleteMatchingAny subseqs) xs
+
+eliminate :: Eq a => [a] -> [a] -> [a]
+eliminate subseq xs =
+  firstFixedPoint (deleteMatching subseq) xs
+
+firstFixedPoint :: Eq a => (a -> a) -> a -> a
+firstFixedPoint f x =
+  let x' = f x in
+    if x' == x then x else firstFixedPoint f x'
+
+deleteMatchingAny :: Eq a => [[a]] -> [a] -> [a]
+deleteMatchingAny subseqs xs =
+  foldr deleteMatching xs subseqs
+
+deleteMatching :: Eq a => [a] -> [a] -> [a]
+deleteMatching subseq xs = del subseq xs []
+  where del subseq [] ys = reverse ys
+        del subseq xs ys | subseq `isPrefixOf` xs = del subseq (drop (length subseq) xs) ys
+        del subseq (x:xs) ys = del subseq xs (x : ys)
 
 randomSpaces :: Int -> Int -> Gen String
 randomSpaces min max = do 
   n <- choose(min, max) :: Gen Int
   return $ replicate n ' '
 
-prop_parseComposeFormatIsId :: [TopLevelDecl] -> Gen Property
-prop_parseComposeFormatIsId decls = do
+prop_parseIsInverseOfRandomFormat :: [TopLevelDecl] -> Gen Property
+prop_parseIsInverseOfRandomFormat decls = do
   indent <- choose(0, 4)
   formatted <- randomFormat indent decls 
   return $ case parseTopLevelDecls formatted "test input" of
