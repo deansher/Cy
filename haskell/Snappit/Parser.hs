@@ -13,20 +13,22 @@ module Snappit.Parser (
   parseTopLevelDecls
 ) where
 
-import Snappit.AbstractSyntaxTree (TopLevelDecl(..))
+import Snappit.SyntaxTree (TopLevelDecl(..), Identifier(..))
+
+import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
+
+import Control.Applicative ( (<$>) )
+import Control.Monad.Identity
+import Control.Monad (liftM)
 
 import Text.Parsec
 import Text.Parsec.Prim
 import Text.Parsec.Token (GenTokenParser)
-import Text.Parsec.IndentParsec(runGIPT)
+import Text.Parsec.IndentParsec(runGIPT, foldedLinesOf)
 
-import Control.Monad.Identity
-import Control.Monad (liftM)
 import Text.Parsec.Token (makeTokenParser, GenLanguageDef(..))
 import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
-
-import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
 import Test.QuickCheck
 
@@ -56,10 +58,12 @@ tokP :: IT.GenIndentTokenParser HaskellLike String () Identity
 tokP = makeTokenParser langDef
 
 kwPackage = IT.reserved tokP "package"
+kwExport = IT.reserved tokP "export"
 identifier = IT.identifier tokP
 dot = IT.reservedOp tokP "."
 integer = IT.integer tokP
-semiSep = IT.semiSepOrFoldedLines tokP
+semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
+bracesBlock = IT.bracesBlock tokP
 whiteSpace = IT.whiteSpace tokP
 
 parseTopLevelDecls :: String -> String -> Either ParseError [TopLevelDecl]
@@ -72,19 +76,24 @@ type ParserM a = IndentParsecT String () Identity a
 
 topLevelDecls :: ParserM [TopLevelDecl]
 topLevelDecls = do whiteSpace
-                   decls <- semiSep topLevelDecl
+                   decls <- semiSepOrFoldedLines topLevelDecl
                    eof
                    return decls
 
 topLevelDecl :: ParserM TopLevelDecl
-topLevelDecl = packageDecl
+topLevelDecl = packageDecl <|> export
 
 packageDecl :: ParserM TopLevelDecl
 packageDecl = do
-  whiteSpace
   kwPackage
   name <- packageName
   return $ PackageDecl name
+
+export :: ParserM TopLevelDecl
+export = do
+  kwExport
+  idents <- many1 $ identifier
+  return $ Export $ map Identifier idents
 
 packageName :: ParserM String
 packageName = liftM (intercalate ".") $ identifier `sepBy` dot
@@ -93,6 +102,7 @@ packageName = liftM (intercalate ".") $ identifier `sepBy` dot
 -- Test infrastructure
 
 class RandomFormattable a where
+  -- Given an indentation level and a RandomFormattable, produce a Gen String.
   randomFormat :: Int -> a -> Gen String
 
 instance RandomFormattable [TopLevelDecl] where
@@ -104,11 +114,37 @@ instance RandomFormattable [TopLevelDecl] where
     return $ concat snippets
 
 instance RandomFormattable TopLevelDecl where
+
   randomFormat indent (PackageDecl name) = do
     let indentation = replicate indent ' '
     white <- randomHorizontalWhitespace
-    le <- lineEnding
+    le <- randomLineEnding
     return $ indentation ++ "package" ++ white ++ name ++ le
+
+  randomFormat indent (Export idents) = do
+    let indentation = replicate indent ' '
+    white <- randomHorizontalWhitespace
+    le <- randomLineEnding
+    foldedIdents <- randomFold indent idents
+    return $ indentation ++ "export" ++ white ++ foldedIdents ++ le
+
+instance RandomFormattable Identifier where
+  randomFormat indent (Identifier name) = return name
+
+randomFold :: (RandomFormattable a) => Int -> [a] -> Gen String
+randomFold indent xs = concat <$> mapM (randomFold1 indent) xs
+
+randomFold1 :: (RandomFormattable a) => Int -> a -> Gen String
+randomFold1 indent x = do
+  n <- choose(1, 4) :: Gen Int
+  leadingWhite <- if n > 1 then randomHorizontalWhitespace
+                           else do
+                             le <- randomLineEnding
+                             plusIndent <- choose(1, 4) :: Gen Int
+                             let indentation = replicate (indent + plusIndent) ' '
+                             return $ le ++ indentation
+  formatX <- randomFormat indent x
+  return $ leadingWhite ++ formatX
 
 randomHorizontalWhitespace :: Gen String
 randomHorizontalWhitespace = do
@@ -125,11 +161,11 @@ randomHorizontalWhitespace = do
 randomBlankLines :: Int -> Gen String
 randomBlankLines indent = do
   n <- choose(1, 4) :: Gen Int
-  lines <- vectorOf n lineEnding :: Gen [String]
+  lines <- vectorOf n randomLineEnding :: Gen [String]
   return $ concat lines
 
-lineEnding :: Gen String
-lineEnding = do
+randomLineEnding :: Gen String
+randomLineEnding = do
   spaces <- randomSpaces 0 4
   n <- choose(1, 10) :: Gen Int
   if n <= 8
@@ -139,7 +175,7 @@ lineEnding = do
              text <- randomTextAvoiding ["\n"]
              return $ spaces ++ "--" ++ text ++ "\n"
            else do
-             le <- lineEnding
+             le <- randomLineEnding
              comment <- randomNestedComment
              return $ spaces ++ comment ++ le
 
@@ -200,3 +236,5 @@ prop_parseIsInverseOfRandomFormat decls = do
                                else printTestCase ("Original:  " ++ show decls ++ "\n\n" ++
                                                    "Parsed as: " ++ show decls' ++ "\n\n" ++
                                                    "Formatted as:" ++ "\n\n" ++ formatted) False
+
+runTests = quickCheckWith (stdArgs { maxSuccess=1000, chatty=False }) prop_parseIsInverseOfRandomFormat

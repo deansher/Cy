@@ -7,8 +7,8 @@
 *
 * ***** END LICENSE BLOCK ***** -}
 
-module Snappit.AbstractSyntaxTree (
-  TopLevelDecl(..)
+module Snappit.SyntaxTree (
+  TopLevelDecl(..), Identifier(..)
 ) where
 
 import Control.Monad (replicateM)
@@ -16,22 +16,28 @@ import Data.List (intercalate)
 
 import Test.QuickCheck
 
-data TopLevelDecl = PackageDecl String
+data TopLevelDecl = PackageDecl String | Export [Identifier]
   deriving (Eq, Show)
 
 data Identifier = Identifier String
+  deriving (Eq, Show)
 
 ----------------------
 -- Test infrastructure
 
 instance Arbitrary TopLevelDecl where
-  arbitrary = oneof [ arbitraryPackageDecl ]
+  arbitrary = oneof [ arbitraryPackageDecl, arbitraryExport ]
 
 arbitraryPackageDecl :: Gen TopLevelDecl
 arbitraryPackageDecl = do
   len <- choose (1, 3) :: Gen Int
   names <- vectorOf len arbitraryIdentifierName
   return $ PackageDecl $ intercalate "." names
+
+arbitraryExport = do
+  n <- choose (1, 3) :: Gen Int
+  idents <- vectorOf n arbitrary :: Gen [Identifier]
+  return $ Export idents
 
 arbitraryIdentifierName :: Gen String
 arbitraryIdentifierName = do
