@@ -7,7 +7,7 @@
 *
 * ***** END LICENSE BLOCK ***** -}
 
-module Snappit.SyntaxTree (
+module Staq.SyntaxTree (
   TopLevelDecl(..), TypeDecl(..),
   Identifier(..), TypeExpression(..)
 ) where

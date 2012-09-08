@@ -1,4 +1,4 @@
-Snappit
+Staq
 =======
 The "low haskell" software platform,
 where the functions are pure, the statements have effects, and the monads live in "for" statements.
@@ -16,7 +16,7 @@ The language attempts to preserve the beauty of Haskell, but in a simpler and mo
 Essentially, every function implicitly runs in an ST monad (Haskell's "state transformer"), with 
 language support for vars (variables) in that monad.  Instead of the IO monad, real-world effects
 are implemented as actors called "components".  Primitive IO operations are implemented underneath
-the Snappit platform (in JavaScript) and wrapped in components.
+the Staq platform (in JavaScript) and wrapped in components.
 
 Control-flow monads (such as Maybe or List) can be implemented for use in "for" statements.  So
 can any other kind of monad other than IO, but the built-in support for stateful effects through
@@ -38,7 +38,7 @@ being after-thoughts:
 - Suitability for long-term IDE and debugger development.
 
 This is secretly an effort to develop hard AI, but that's a long story that isn't worth telling yet.
-It isn't too hard to see the basic outline: adaptive computation needs a way to efficiently search
+It isn't too difficult to see the basic outline: adaptive computation needs a way to efficiently search
 a space of algorithms that is dense in useful behaviors.
 
 License
@@ -48,4 +48,4 @@ subject to the Apache 2 license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 Documentation
 -------------
-See the notes directory for a rough pile of info.  Also see the snappit directory for examples.
+See the notes directory for a rough pile of info.  Also see the staq directory for examples.

@@ -1,4 +1,4 @@
-package co.snappit.examples.chat
+package us.staq.examples.chat
 
 export Chat
 

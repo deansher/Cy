@@ -9,11 +9,11 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Snappit.Parser (
+module Staq.Parser (
   parseTopLevelDecls
 ) where
 
-import Snappit.SyntaxTree (TopLevelDecl(..), Identifier(..))
+import Staq.SyntaxTree (TopLevelDecl(..), Identifier(..))
 
 import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
@@ -70,10 +70,10 @@ bracesBlock = IT.bracesBlock tokP
 whiteSpace = IT.whiteSpace tokP
 
 parseTopLevelDecls :: String -> String -> Either ParseError [TopLevelDecl]
-parseTopLevelDecls sourceCode originName = parseSnappit sourceCode originName topLevelDecls
+parseTopLevelDecls sourceCode originName = parseStaq sourceCode originName topLevelDecls
 
-parseSnappit :: String -> String -> ParserM a -> Either ParseError a
-parseSnappit sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
+parseStaq :: String -> String -> ParserM a -> Either ParseError a
+parseStaq sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
 
 type ParserM a = IndentParsecT String () Identity a
 
