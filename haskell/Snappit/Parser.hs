@@ -59,8 +59,11 @@ tokP = makeTokenParser langDef
 
 kwPackage = IT.reserved tokP "package"
 kwExport = IT.reserved tokP "export"
+kwType = IT.reserved tokP "type"
+kwAbstract = IT.reserved tokP "abstract"
 identifier = IT.identifier tokP
-dot = IT.reservedOp tokP "."
+opDot = IT.reservedOp tokP "."
+opEqual = IT.reservedOp tokP "="
 integer = IT.integer tokP
 semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
 bracesBlock = IT.bracesBlock tokP
@@ -81,7 +84,7 @@ topLevelDecls = do whiteSpace
                    return decls
 
 topLevelDecl :: ParserM TopLevelDecl
-topLevelDecl = packageDecl <|> export
+topLevelDecl = packageDecl <|> export <|> typeDecl
 
 packageDecl :: ParserM TopLevelDecl
 packageDecl = do
@@ -89,14 +92,36 @@ packageDecl = do
   name <- packageName
   return $ PackageDecl name
 
+packageName :: ParserM String
+packageName = liftM (intercalate ".") $ identifier `sepBy` opDot
+
 export :: ParserM TopLevelDecl
 export = do
   kwExport
   idents <- many1 $ identifier
   return $ Export $ map Identifier idents
 
-packageName :: ParserM String
-packageName = liftM (intercalate ".") $ identifier `sepBy` dot
+typeDecl :: ParserM TopLevelDecl
+typeDecl = do
+  kwType
+  typeName <- identifier
+  opEqual
+  typeExpr <- typeExpression
+  return $ TypeDecl typeName typeExpr
+
+typeExpression :: ParserM TypeExpression
+typeExpression = componentLiteral <|> objectLiteral <?> "type expression"
+
+componentLiteral :: ParserM TypeExpression
+componentLiteral = do
+  isAbstract <- indicator kwAbstract
+
+indicator :: ParserM a -> ParserM Bool
+indicator p = do
+  m <- optionalMaybe p
+  return $ case m of
+            Just _ -> True
+            Nothing -> False
 
 ----------------------
 -- Test infrastructure

@@ -2,16 +2,24 @@ package co.snappit.examples.chat
 
 export Chat
 
-type Chat = component
-  hasA Console withA NodeStdio
-  hasA MockClient
+{- A component may have subcomponents, ports, event handlers, and state (vars).
 
-type RawStdio = abstract component
+   If wiring between subcomponents is not specified, the compiler looks for a typesafe wiring and complains
+   if there is not exactly one.
+ -}
+
+type Chat = component
+  has 1 Console NodeStdio
+  has 1 MockClient
+
+type NodeStdio = component
   port io
     output fromStdin :: String
-    input toStdout :: String
-
-type NodeStdio = RawStdio => component
+    
+    input toStdout :: String of
+      d -> [javascript d|
+              process.stdout.write(d);
+            |]
 
   daemon [javaScript fromStdin|
      process.stdin.resume();
@@ -22,115 +30,157 @@ type NodeStdio = RawStdio => component
      });
     |]
 
-  port io
-    on toStdout [javascript toStdout|
-        process.stdout.write(toStdout);
-      |]
-
-type Console = component
-  hasA RawStdio
+type Console rawIoComponent = component
+  has 1 rawIoComponent
 
   var partialLine := ""
 
   port rawIo
-    input fromStdin :: String
     output toStdout :: String
 
-    on fromStdin
-      if not fromStdin.empty then
-        var lines := fromStdin.split (regex "\n")
-        lines[0] := partialLine ++ lines[0]
-        n = lines.length
-        trailingNewline = fromStdin.endsWith "\n"
-        partialLine := ""
-        for i <- 0..n yield do
-          if i < n-1 || trailingNewline then
-            console.fromStdin := lines[i]
-          else
-            partialLine := lines[i]
+    input fromStdin :: String of
+      d -> if not d.empty then
+             -- Notice that split is a method on the delimiter, which reverses the typical split parameter order
+             -- from an OO language.  This parameter order matches Haskell, where the motivation is that 
+             -- split curries nicely.  E.g. "\n".split is a function that splits on newlines.
+             var lines := "\n".split d
+
+             -- This is shorthand for lines := lines.set 0 $ partialLine ++ lines[0]
+             -- given a hypothetical (non-existent) set method.
+             lines[0] := partialLine ++ lines[0]
+             n = lines.length -- we could equivalently say length lines
+             trailingNewline = d.endsWith "\n"
+             partialLine := ""
+             for i <- 0..n do
+               if i < n-1 || trailingNewline then
+                 console.fromStdin := lines[i]
+               else
+                 partialLine := lines[i]
 
   port console
     output fromStdin :: String
-    input toStdout :: String
+    input toStdout :: String of
+      line -> rawIo.toStdout := line
 
-    on toStdout
-      rawIo.toStdout := toStdout
+type MockClient = component
+  var history := ChatHistory
 
-type ChatClient = abstract component
   port commands
-    input command :: String
     output response :: String
-
-type MockClient = ChatClient => component
-  historyLength = 10
-  
-  var history := emptyChatHistory historyLength
-
-  port commands
-    on command
-      case parseVerb command of
-        Some "help" ->
-          response :=
-            [stringWithNewlines
-             | ":history" shows chat history.
-             | ":clear" clears chat history.
-             |
-             | "!xyz" repeats the most recent command that started with "xyz".
-             | "?xyz" repeats the most recent command that contained "xyz".
-             |      (These can include punctuation such as ":".)
-             |
-             | Anything else is a message to be sent into the chat.
-             |]
-        Some "history" ->
-          response := history.prettyPrint
-        Some "clear" ->
-          history .= clear
-          response := "History cleared."
-        _ ->
-          response := if command.startsWith "!" then
-            processCommand history.findMostRecentMatching (regex $ "^%s" format response[1..])
-          else if command.startsWith "?" then
-            processCommand history.findMostRecentMatching response[1..]
-          else
-            processCommand command
+    
+    input command :: String of
+      c -> case parseVerb c of
+             Some "help" ->
+               response :=
+                 [stringLines
+                  | ":history" shows chat history.
+                  | ":clear" clears chat history.
+                  |
+                  | "!xyz" repeats the most recent command that started with "xyz".
+                  | "?xyz" repeats the most recent command that contained "xyz".
+                  |      (These can include punctuation such as ":".)
+                  |
+                  | Anything else is a message to be sent into the chat.
+                  |]
+             Some "history" ->
+               response := history.prettyPrint
+             Some "clear" ->
+               history .= clear
+               response := "History cleared."
+             _ ->
+               response := if c.startsWith "!" then
+                 processCommand history.chFindMostRecentMatching (_.startsWith response[1..])
+               else if c.startsWith "?" then
+                 processCommand history.chFindMostRecentMatching (_.contains response[1..])
+               else
+                 processCommand c
           
-      history .= add $ Interaction command response
+      history .= chAdd $ Interaction command response
 
-type ChatHistory = PrettyPrintable => object
-  length :: Int
-  history :: [HistoryElement]
+      
+{- The object model is extremely simple:
+
+    * There is no subclassing or inheritance. This is to avoid the complexity of covariance, of type inference
+      in the face of subclassing, etc. We aren't just being lazy; that complexity would spill over into the
+      programmer's mental model and into error messages.
+
+    * Objects are immutable.
+ -}
+
+{- Declaring a type Foo to be an object defines two new identifiers:
+   * A type constructor Foo, which may take type parameters.
+   * A value constructor Foo, which may take value parameters.
+ -}
+
+type ChatHistory = object
+
+  -- This is actually a method; the full type of chMaxLength is ChatHistory -> Int.
+  private chMaxLength = 10
   
-  add :: HistoryElement -> ChatHistory
-  add e =
-    if history.length >= length then
-      history .= tail
-    history += e
+  private var chElements := [] :: HistoryElement a => [a] 
 
-  clear :: ChatHistory
-  clear = this { history = [] }
+  {- Method names do not live in a "class-local namespace".  They must be unique.
+     The reason for this is that we prefer using type inference (method and function names imply type)
+     instead of explicitly declaring types and using that to disambiguate names.  Also, this keeps
+     type inference very direct and simple, which makes error messages relatively easy to understand.
 
-  prettyPrint = history.map prettyPrint .join "\n\n"
+     Methods, however, do have a one special privilege, plus some notational convenience.
 
-  -- Intentionally demonstrating some language features here, although an abstract method would be prettier.
-  findMostRecentMatching :: (String | Regex) -> Boolean
-  findMostRecentMatching pat = history.reverse.find $ matches pat
-                               where matches rx elt = case cast elt of
-                                 Just interaction -> interaction.command.contains pat
-                                 _ -> false
+     The special privilege is that methods can access private fields.
 
-emptyChatHistory :: Int -> ChatHistory 
-emptyChatHistory length = ChatHistory
-  length = length
-  history = []
+     The notational convenience is that a method
+       * takes a copy of the object on which it was invoked as an implicit first lvalue parameter;
+       * implicitly modifies that lvalue when it updates fields of the object;
+       * and implicitly returns that lvalue if it is declared to return the object's own type,
+         and if it ends with a statement instead of an expression.
+       * Plus, this implicit behavior extends to a method that invokes another method: the implicit
+         `this` lvalue is passed to the invoked method, and if that method returns a value of the same
+         type, the `this` lvalue is updated in the caller.
 
-type PrettyPrintable = abstract object
-  prettyPrint :: String
+     When a method is used from outside the declaring object, or when applying a function declared at the top
+     level, method invocation syntax (a.foo b) or application syntax (foo a b) may be used
+     interchangeably. However, when invoking one method from inside another in the same object declaration,
+     method invocation syntax (foo b, with an implicit `this` as a) must be used.
+   -}
+  
+  chAdd :: HistoryElement -> ChatHistory
+  chAdd e =
+    if length chElements >= chMaxLength then -- we could equivalently write chElements.length
+      chElements .= tail -- shorthand for chElements := chElements.tail
+    chElements += e
 
-type HistoryElement = PrettyPrintable => abstract
+  -- Returns a copy of this ChatHistory with chElements set back to the empty list.
+  chClear :: ChatHistory
+  chClear =
+    chElements := []
 
-type Interaction = HistoryElement => object
-  command :: String
-  Response :: String
+  -- Intentionally showing how the method invocation syntax for `map` is different from OO languages.
+  chPrettyPrint = join "\n\n" $ prettyPrint.map chElements
 
+  chFindMostRecentSatisfying :: (HistoryElement -> Boolean) -> Boolean
+  chFindMostRecentSatisfying pred = history.reverse.find pred
+
+-- An interface is equivalent to as Haskell type class.  An interface is specified as a set of top-level
+-- functions that must each have a type that mentions the target type (`a` in the example below).
+
+interface PrettyPrintable a with
+  prettyPrint :: a -> String
+
+-- An interface implementation is always declared externally from the definition of the object.
+-- When a method should be used as the implementation of an interface function, the interface function
+-- is simply declared equal to the method.
+
+implementation PrettyPrintable ChatHistory with
+  prettyPrint = chPrettyPrint
+
+interface PrettyPrintable a => HistoryElement a 
+
+type Interaction = object
+  var command :: String
+  var response :: String
+
+implementation PrettyPrintable Interaction with
   prettyPrint = "Command:  " ++ command ++ "\n" ++
                 "Response: " ++ response
+
+implementation HistoryElement Interaction

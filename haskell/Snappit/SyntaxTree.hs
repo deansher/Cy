@@ -8,7 +8,8 @@
 * ***** END LICENSE BLOCK ***** -}
 
 module Snappit.SyntaxTree (
-  TopLevelDecl(..), Identifier(..)
+  TopLevelDecl(..), TypeDecl(..),
+  Identifier(..), TypeExpression(..)
 ) where
 
 import Control.Monad (replicateM)
@@ -16,11 +17,27 @@ import Data.List (intercalate)
 
 import Test.QuickCheck
 
-data TopLevelDecl = PackageDecl String | Export [Identifier]
+data TopLevelDecl = PackageDecl String
+                  | Export [Identifier]
+                  | TypeDecl Identifier TypeExpression
+                  
   deriving (Eq, Show)
 
 data Identifier = Identifier String
   deriving (Eq, Show)
+
+data TypeExpression = ComponentLiteral {
+                          typeIsAbstract :: Bool
+                        , typeSuper :: Maybe[Identifier]
+                        , componentElements :: [ComponentElement]
+                      }
+                    | ObjectLiteral {
+                          typeIsAbstract :: Bool
+                        , typeSuper :: Maybe[Identifier]
+                        , objectElements :: [ObjectElement]
+                      }
+
+data ComponentElement = 
 
 ----------------------
 -- Test infrastructure
