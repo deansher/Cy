@@ -67,15 +67,6 @@ type MockClient = component
         history .= chAdd $ Interaction command answer
         answer
       
-{- The object model is extremely simple:
-
-    * There is no subclassing or inheritance. This is to avoid the complexity of covariance, of type inference
-      in the face of subclassing, etc. We aren't just being lazy; that complexity would spill over into the
-      programmer's mental model and into error messages.
-
-    * Objects are immutable.
- -}
-
 {- Declaring a type Foo to be an object defines two new identifiers:
    * A type constructor Foo, which may take type parameters.
    * A value constructor Foo, which may take value parameters.
@@ -88,30 +79,6 @@ type ChatHistory = object
   
   private var chElements := [] :: HistoryElement a => [a] 
 
-  {- Method names do not live in a "class-local namespace".  They must be unique.
-     The reason for this is that we prefer using type inference (method and function names imply type)
-     instead of explicitly declaring types and using that to disambiguate names.  Also, this keeps
-     type inference very direct and simple, which makes error messages relatively easy to understand.
-
-     Methods, however, do have a one special privilege, plus some notational convenience.
-
-     The special privilege is that methods can access private fields.
-
-     The notational convenience is that a method
-       * takes a copy of the object on which it was invoked as an implicit first lvalue parameter;
-       * implicitly modifies that lvalue when it updates fields of the object;
-       * and implicitly returns that lvalue if it is declared to return the object's own type,
-         and if it ends with a statement instead of an expression.
-       * Plus, this implicit behavior extends to a method that invokes another method: the implicit
-         `this` lvalue is passed to the invoked method, and if that method returns a value of the same
-         type, the `this` lvalue is updated in the caller.
-
-     When a method is used from outside the declaring object, or when applying a function declared at the top
-     level, method invocation syntax (a.foo b) or application syntax (foo a b) may be used
-     interchangeably. However, when invoking one method from inside another in the same object declaration,
-     method invocation syntax (foo b, with an implicit `this` as a) must be used.
-   -}
-  
   chAdd :: HistoryElement -> ChatHistory
   chAdd e =
     if length chElements >= chMaxLength then -- we could equivalently write chElements.length
