@@ -1,44 +1,71 @@
-package staq.examples.chat
+module staq.examples.chat.mockclient
 
-export (MockClient)
+export (mockClientBlueprint)
 
--- A component may have subcomponents, wiring, ports, event handlers, and state (vars).
+-- A blueprint can be declared in code like this, or constructed dynamically as a Blueprint object.
+-- The intent is to allow an IDE to construct a Blueprint, which can be saved or instantiated.
+
+mockClientBlueprint = blueprint
+  has 1 console :: LineIo
+  has 1 stdio :: NodeStdio
+  has 1 mockClient :: MockClient
+
+  -- The parameter order on a wire doesn't matter.  The runtime will look for a typesafe set
+  -- of connections between inputs and outputs, and complain if there is not exactly one.
+  
+  wire mockClient.commands console.lineIo 
+  wire console.rawIo stdio.io
 
 type MockClient = component
+
   var history := ChatHistory
 
   port commands
-    output response :: String
-    
-    input command :: String of
-      c -> case parseVerb c of
-             Some "help" ->
-               response :=
-                 [stringLines
-                  | ":history" shows chat history.
-                  | ":clear" clears chat history.
-                  |
-                  | "!xyz" repeats the most recent command that started with "xyz".
-                  | "?xyz" repeats the most recent command that contained "xyz".
-                  |      (These can include punctuation such as ":".)
-                  |
-                  | Anything else is a message to be sent into the chat.
-                  |]
-             Some "history" ->
-               response := history.prettyPrint
-             Some "clear" ->
-               history .= clear
-               response := "History cleared."
-             _ ->
-               response := if c.startsWith "!" then
-                 processCommand history.chFindMostRecentMatching (_.startsWith response[1..])
-               else if c.startsWith "?" then
-                 processCommand history.chFindMostRecentMatching (_.contains response[1..])
-               else
-                 processCommand c
-          
-      history .= chAdd $ Interaction command response
+    input command :: String >> String handles
+      c ->
+        -- We pointlessly delegate handling of this command to the processCommand action, to show how
+        -- actions are declared and used.  The body of processCommand could instead appear here.
+      
+        -- Neither this variable nor its type declaration are required, but they show what is going on.
+        -- The processCommand action will occur asynchronously to this action.
+        
+        answer :: Future String
+        answer = send processCommand c
 
+        -- Since this input handler returns a Future String, the runtime will wait for the String reply
+        -- to come back from processCommand and send it back as our reply.
+        
+        answer        
+
+    action processCommand :: String >> String handles
+      c ->
+        answer = case parseVerb c of
+          Some "help" ->
+              [stringLines
+               | ":history" shows chat history.
+               | ":clear" clears chat history.
+               |
+               | "!xyz" repeats the most recent command that started with "xyz".
+               | "?xyz" repeats the most recent command that contained "xyz".
+               |      (These can include punctuation such as ":".)
+               |
+               | Anything else is a message to be sent into the chat.
+               |]
+          Some "history" ->
+            history.prettyPrint
+          Some "clear" ->
+            history .= clear
+            "History cleared."
+          _ ->
+            if c.startsWith "!" then
+              processCommand history.chFindMostRecentMatching (_.startsWith response[1..])
+            else if c.startsWith "?" then
+              processCommand history.chFindMostRecentMatching (_.contains response[1..])
+            else
+              processCommand c
+              
+        history .= chAdd $ Interaction command answer
+        answer
       
 {- The object model is extremely simple:
 
@@ -56,7 +83,7 @@ type MockClient = component
 
 type ChatHistory = object
 
-  -- This is actually a method; the full type of chMaxLength is ChatHistory -> Int.
+  -- This is actually a method; its full type is ChatHistory -> Int.
   private chMaxLength = 10
   
   private var chElements := [] :: HistoryElement a => [a] 
