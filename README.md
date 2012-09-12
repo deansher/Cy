@@ -46,14 +46,15 @@ platform features listed above, plus an IDE and debugger that strongly leverage 
 features, would create an insanely high-productivity development environment. Obviously, 
 there is a lot to be decided and proven along that long path!
 
-In the ultra-long-term, this is secretly an AI project.  It is too soon to tell the full story, but
-the basic outline is easy: adaptive computation needs a way to efficiently explore a space of
-algorithms that is dense in useful behaviors. If we get better and better at suggesting the best
-component or function for the human programmer to use in a particular context, then we also get
-better and better at knowing the densest regions of useful algorithmic behavior for automatic
-exploration. Anyway, it is a fine line between the valuable emergent complexity of a large number of
-smoothly collaborating human programmers and the added value of adding automatic algorithm discovery
-in some areas. Staq starts with the former and aspires to the latter.
+In the ultra-long-term, this is an AI project.  That is so far in the future that there's no reason
+to tell the full story (ask me if you are actually interested), but the basic outline is easy:
+adaptive computation needs a way to efficiently explore a space of algorithms that is dense in
+useful behaviors. If we get better and better at suggesting the best component or function for the
+human programmer to use in a particular context, then we also get better and better at knowing the
+densest regions of useful algorithmic behavior for automatic exploration. Anyway, it is a fine line
+between the valuable emergent complexity of a large number of smoothly collaborating human
+programmers and the added value of adding automatic algorithm discovery in some areas. Staq starts
+with the former and aspires to the latter.
 
 
 Object Model
