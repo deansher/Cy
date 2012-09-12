@@ -29,14 +29,31 @@ being after-thoughts:
 - API contracts and testing.
 - Publishing, versioning, and dependency management.
 - Open-source license management.
-- Searching for components and functions that work in a particular context.
+- Searching for components and functions that work in a particular context
+  (think "Hoogle on steroids").
 - Human-readable data (all types have readable JSON representations).
 - Development-mode capture and playback of component and function inputs and outputs.
 - Suitability for long-term IDE and debugger development.
 
-This is secretly an effort to develop hard AI, but that's a long story that isn't worth telling yet.
-It isn't too difficult to see the basic outline: adaptive computation needs a way to efficiently
-search a space of algorithms that is dense in useful behaviors.
+The medium-term goal of Staq (but if I do all the development myself, this will be around 2015)
+is to choose a useful niche for non-programmers to graphically assemble components and for
+casual programmers to write simple code. The idea is to have a compellingly easy environment
+for building a certain kind of application.
+
+The longer-term goal of Staq is to become a popular platform for developers who want to build
+systems with sturdy foundations and with easy fine-grain code-sharing. The theory is that the
+platform features listed above, plus an IDE and debugger that strongly leverage those 
+features, would create an insanely high-productivity development environment. Obviously, 
+there is a lot to be decided and proven along that long path!
+
+In the ultra-long-term, this is secretly an AI project.  It is too soon to tell the full story, but
+the basic outline is easy: adaptive computation needs a way to efficiently explore a space of
+algorithms that is dense in useful behaviors. If we get better and better at suggesting the best
+component or function for the human programmer to use in a particular context, then we also get
+better and better at knowing the densest regions of useful algorithmic behavior for automatic
+exploration. Anyway, it is a fine line between the valuable emergent complexity of a large number of
+smoothly collaborating human programmers and the added value of adding automatic algorithm discovery
+in some areas. Staq starts with the former and aspires to the latter.
 
 
 Object Model
