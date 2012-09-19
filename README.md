@@ -53,14 +53,14 @@ useful behaviors. If we get better and better at suggesting the best component o
 human programmer to use in a particular context, then we also get better and better at knowing the
 densest regions of useful algorithmic behavior for automatic exploration. Anyway, it is a fine line
 between the valuable emergent complexity of a large number of smoothly collaborating human
-programmers and the added value of adding automatic algorithm discovery in some areas. Staq starts
+programmers and the added benefit of automatic algorithm discovery in some areas. Staq starts
 with the former and aspires to the latter.
 
 
 Object Model
 ------------
 Unlike Haskell, Staq does have a notion of objects, which borrows lightly from the OO world.
-However, Staq's notion of an object is extremely simple.  It is just light syntactic sugar
+However, Staq's notion of an object is extremely simple.  It is mostly light syntactic sugar
 over a Haskell-like functional model.
 
 There is no subclassing or inheritance. This is to avoid the complexity of covariance, type
@@ -69,39 +69,34 @@ over into the programmer's mental model and into error messages.
 
 Objects are immutable.
 
-Method names do not live in a "class-local namespace".  They must be unique. The reason for this
-is that we prefer using type inference (method and function names imply type) instead of
-explicitly declaring types and using that to disambiguate names.  Also, this keeps type inference
-very direct and simple, which makes error messages relatively easy to understand.
+Methods have the following special characteristics compared to regular functions:
 
-Methods, however, do have a one special privilege, plus some notational convenience.
+- A method is invoked with the usual special syntax: `x.m y z`
 
-The special privilege is that methods can access private fields.
+- An object class can have private fields and methods, which a method can access.
 
-The notational convenience is that a method
+- An object class serves as a namespace for its methods, so the same method name
+  can be used in multiple object classes.
 
-- takes a copy of the object on which it was invoked as an implicit first lvalue parameter;
+- Methods provide the following notational convenience:
 
-- implicitly modifies that lvalue when it updates fields of the object;
+  + A method takes a copy of the object on which it was invoked as an implicit first lvalue parameter;
 
-- and implicitly returns that lvalue if it is declared to return the object's own type,
-  and if it ends with a statement instead of an expression.
-  
-- Plus, this implicit behavior extends to a method that invokes another method: the implicit
-  `this` lvalue is passed to the invoked method, and if that method returns a value of the same
-  type, the `this` lvalue is updated in the caller.
+  + implicitly modifies that lvalue when it updates fields of the object;
+
+  + and implicitly returns that lvalue if it is declared to return the object's own type,
+    and if it ends with a statement instead of an expression.
+
+  + Plus, this implicit behavior extends to a method that invokes another method: the implicit
+    `this` lvalue is passed to the invoked method, and if that method returns a value of the same
+    type, the `this` lvalue is updated in the caller.
      
-When a method is used from outside the declaring object, or when applying a function declared at the top
-level, method invocation syntax (a.foo b) or application syntax (foo a b) may be used
-interchangeably. However, when invoking one method from inside another in the same object declaration,
-method invocation syntax (foo b, with an implicit `this` as a) must be used.
-
   
 Stackable Abstractions
 ----------------------
 The easiest way to explain stackable abstractions is to give a typical example of non-stackable
 abstractions.  This example uses Java's syntax, not because Java is any worse than most other
-platforms, but because it is widely familiar.  Suppose we have the following classes Foo and Bar:
+platforms, but because I know it well.  Suppose we have the following classes Foo and Bar:
 
     /**
      * Data access layer for the "foo" db.  This class obtains the path of its configuration file
@@ -133,7 +128,7 @@ platforms, but because it is widely familiar.  Suppose we have the following cla
 
 Now suppose we want to create a Bar method that combines these capabilities:
 
-    List<String> listBValues(String fooKey) throws DbException, RpcException
+    List<Integer> listBValues(String fooKey) throws DbException, RpcException
 
 To explain the actual, complete behavioral contract of the listBValues method, we would have to
 write a short essay!  If we scale this up to the complexity of a real system, the contract becomes

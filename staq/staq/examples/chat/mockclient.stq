@@ -1,20 +1,29 @@
 module staq.examples.chat.mockclient
 
-export (mockClientBlueprint)
+export (NodeMockClientSystem)
 
--- A blueprint can be declared in code like this, or constructed dynamically as a Blueprint object.
--- The intent is to allow an IDE to construct a Blueprint, which can be saved or instantiated.
-
-mockClientBlueprint = blueprint
+type NodeMockClientSystem = component
   has 1 console :: LineIo
   has 1 stdio :: NodeStdio
   has 1 mockClient :: MockClient
 
-  -- The parameter order on a wire doesn't matter.  The runtime will look for a typesafe set
-  -- of connections between inputs and outputs, and complain if there is not exactly one.
+  -- The parameter order for wire doesn't matter.  The runtime will look for a typesafe set
+  -- of connections between inputs and outputs and complain if there is not exactly one.
+  -- Note that a reply can serve as an output, which is what happens with mockClient.commands.
   
-  wire mockClient.commands console.lineIo 
-  wire console.rawIo stdio.io
+  wire mockClient.commands console.lineIo
+
+  -- Alternatively, we can specify the wiring at the level of individual inputs and outputs.
+  -- The parameter order still doesn't matter. 
+
+  wire console.rawIo.fromStdin stdio.io.fromStdin
+  wire console.rawIo.toStdout stdio.io.toStdout
+
+  -- When wiring at the level of individual inputs and outputs, there is also a way to 
+  -- indicate that a given input's reply should be sent to a particular input.  If done this way, the
+  -- above example of mockClient.commands would look like this:
+  --
+  -- wire mockClient.commands.command (console.lineIo.fromStdin, console.lineIo.toStdout)
 
 type MockClient = component
 
@@ -26,24 +35,35 @@ type MockClient = component
         -- We pointlessly delegate handling of this command to the processCommand action, to show how
         -- actions are declared and used.  The body of processCommand could instead appear here.
       
-        -- Neither this variable nor its type declaration are required, but they show what is going on.
+        -- Neither the `answer` variable nor its type declaration are required, but they show what is going on.
         -- The processCommand action will occur asynchronously to this action.
         
         answer :: Future String
         answer = send processCommand c
 
-        -- Since this input handler returns a Future String, the runtime will wait for the String reply
-        -- to come back from processCommand and send it back as our reply.
-        
-        answer        
+        after answer handles
+          response -> response
+          exception UnknownCommand msg -> msg
+
+    -- An action is a message from a component to itself.  Otherwise, it is identical to an input.
 
     action processCommand :: String >> String handles
       c ->
+      
+        -- A function can't throw an exception. By convention, it indicates errors by returning Either.
+        -- The reasoning behind this is that a function has no environment, and an exception is a poor
+        -- way to signal invalid parameters.
+        
         answer = case parseVerb c of
-          Some "help" ->
+
+          -- An action handler can throw an exception, which causes an immediate exit from the action 
+          -- handler plus an out-of-band signalling mechanism on the reply.
+        
+          Just "help" ->
               [stringLines
                | ":history" shows chat history.
                | ":clear" clears chat history.
+               | Anything else that begins with a colon is an error.
                |
                | "!xyz" repeats the most recent command that started with "xyz".
                | "?xyz" repeats the most recent command that contained "xyz".
@@ -51,12 +71,14 @@ type MockClient = component
                |
                | Anything else is a message to be sent into the chat.
                |]
-          Some "history" ->
+          Just "history" ->
             history.prettyPrint
-          Some "clear" ->
+          Just "clear" ->
             history .= clear
             "History cleared."
-          _ ->
+          Just _ ->
+            throw UnknownCommand { message := "Unknown command: " ++ c }
+          Nothing ->
             if c.startsWith "!" then
               processCommand history.chFindMostRecentMatching (_.startsWith response[1..])
             else if c.startsWith "?" then
@@ -64,69 +86,117 @@ type MockClient = component
             else
               processCommand c
               
-        history .= chAdd $ Interaction command answer
+        history .= add $ Interaction c answer
         answer
-      
-{- Declaring a type Foo to be an object defines two new identifiers:
-   * A type constructor Foo, which may take type parameters.
-   * A value constructor Foo, which may take value parameters.
- -}
+
+-- UnknownCommand has a single public field called "message".  Since this field has an
+-- initial value, the automatically generated constructor UnknownCommand takes no
+-- arguments.  However, it is also easy to create an UnknownCommand with a specific message:
+-- 
+--   UnknownCommand { message := c }
+--   
+-- The above expression is not a special constructor syntax.  Rather, it is an invocation
+-- of the automatically generated constructor, followed by the normal syntax for copying
+-- an object while modifying some of its fields.
+
+type UnknownCommand = object
+  message := "unknown command"
+
+-- Since ChatHistory has a private field with no initial value, it does not get an
+-- automatically generated constructor.
 
 type ChatHistory = object
+  -- It would make more sense in this case to give elements an initial value, but instead
+  -- we leave it blank to explore Staq's constructor syntax.
+  private elements :: [HistoryElement]
 
-  -- This is actually a method; its full type is ChatHistory -> Int.
-  private chMaxLength = 10
-  
-  private var chElements := [] :: HistoryElement a => [a] 
+  -- A constructor is invoked like a regular function. Internally, it is like a method, except
+  -- that it cannot access fields until they are initialized, and it is required to initialize
+  -- every field that is not declared with an initial value.  A constructor can be named like
+  -- an ordinary function.  If an object class does not get an automatically generated
+  -- constructor (as happens when it declares private fields lacking initial values), then
+  -- it is also permissible to declare a constructor whose name is the name of the object.
+  constructors
+    ChatHistory =
+      elements := []
+      
+  methods
+    -- This method's full type is ChatHistory -> Int.
+    private maxLength = 10
 
-  chAdd :: HistoryElement -> ChatHistory
-  chAdd e =
-    if length chElements >= chMaxLength then -- we could equivalently write chElements.length
-      chElements .= tail -- shorthand for chElements := chElements.tail
-    chElements += e
+    add :: HistoryElement -> ChatHistory
+    add e =
+      if length elements >= maxLength then -- we could equivalently write elements.length
+        elements .= tail -- shorthand for elements := elements.tail
+      elements += e
 
-  -- Returns a copy of this ChatHistory with chElements set back to the empty list.
-  chClear :: ChatHistory
-  chClear =
-    chElements := []
+    -- Returns a copy of this ChatHistory with elements set back to the empty list.
+    clear :: ChatHistory
+    clear =
+      elements := []
 
-  -- Intentionally showing how the method invocation syntax for `map` is different from OO languages.
-  chPrettyPrint = join "\n\n" $ prettyPrint.map chElements
+    -- Intentionally showing how the method invocation syntax for `map` is different from OO languages.
+    prettyPrint = join "\n\n" $ prettyPrint.map elements
 
-  chFindMostRecentSatisfying :: (HistoryElement -> Boolean) -> Boolean
-  chFindMostRecentSatisfying pred = history.reverse.find pred
+    findMostRecentSatisfying :: (HistoryElement -> Boolean) -> Boolean
+    findMostRecentSatisfying pred = history.reverse.find pred
 
 {- An interface is equivalent to a Haskell type class.  An interface is specified as a set of top-level
    functions that must each have a type that mentions the target type (`a` in the example below).
  -}
 
 interface PrettyPrintable a where
-  prettyPrint :: a -> String
+  methods
+    prettyPrint :: a -> String
 
-{- An interface implementation is always declared externally from the definition of the object.
-   When a method should be used as the implementation of an interface function, the interface function
-   is simply declared equal to the method.
- -}
+-- An interface implementation is always declared externally from the definition of the object.
+-- If a method of the object has the same name and signature as a method of the interface,
+-- then there is no need (and indeed no option) to declare an implementation of that interface method.
 
-implementation PrettyPrintable ChatHistory where
-  prettyPrint = chPrettyPrint
+implementation PrettyPrintable ChatHistory
 
-{- An interface declaration with no where clause just provides a new name for an existing interface.
-   In this example, HistoryElement is a new interface, but the implementation of HistoryElement for a
-   type doesn't have to do anything; it just needs to be declared.
- -}
+-- There is quite a bit of silliness in the HistoryElement class to explore the boundaries
+-- of Staq's object model.
 
-interface PrettyPrintable a => HistoryElement a 
+type HistoryElement = alternatives
+    Interaction
+      command :: String
+      response :: String
+      methods
+        -- If a method is defined in any alternative, it must be defined with the same
+        -- signature in every alternative.
+        formatAsString = command ++ "=>" ++ response
+  | SystemEvent
+      description :: String
+      methods
+        formatAsString = description ++ "!"
+        
+  having
+    private formatted = formatAsString
+    
+    constructors
+      parseHistoryElementString :: String -> HistoryElement
+      parseHistoryElementString s =
+        case s.findSublist "=>" of
+          Just i - > (c, rest) = s.splitAt i
+                     r = rest.drop "=>".length
+                     Interaction c r
+          Nothing -> d = if s.endsWith "!"
+                         then s.take (s.length - 1)
+                         else s
+                     SystemEvent d
 
-type Interaction = object
-  var command :: String
-  var response :: String
+    methods
+      asString = formatted
 
-implementation PrettyPrintable Interaction where
-  prettyPrint = "Command:  " ++ command ++ "\n" ++
-                "Response: " ++ response
+      size = case self of
+        Interaction c r -> c.length + r.length
+        SystemEvent d -> d.length
+        
 
--- Since Interaction already has the PrettyPrintable interface, we can simply declare it to have
--- the HistoryElement interface.
+implementation PrettyPrintable HistoryElement where
+  methods 
+    prettyPrint = case self of 
+      Interaction c r -> "Command:  " ++ c ++ "\n" ++ "Response: " ++ r
+      SystemEvent d ->   "System Event: " ++ d
 
-implementation HistoryElement Interaction
