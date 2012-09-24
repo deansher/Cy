@@ -1,4 +1,4 @@
-module staq.examples.chat.mockclient
+module staq.examples.chat.mockclient 0.0.1
 
 export (NodeMockClientSystem)
 

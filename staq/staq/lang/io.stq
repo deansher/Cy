@@ -1,4 +1,4 @@
-module staq.lang.io
+module staq.lang.io 0.0.1
 
 export (NodeStdio, LineIo)
 
