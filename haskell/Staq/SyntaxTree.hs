@@ -8,8 +8,9 @@
 * ***** END LICENSE BLOCK ***** -}
 
 module Staq.SyntaxTree (
-  TopLevelDecl(..), TypeDecl(..),
-  Identifier(..), TypeExpression(..)
+    TopLevelDecl(..)
+  , Identifier(..)
+  , VersionNumber(..)
 ) where
 
 import Control.Monad (replicateM)
@@ -17,27 +18,20 @@ import Data.List (intercalate)
 
 import Test.QuickCheck
 
-data TopLevelDecl = PackageDecl String
+data TopLevelDecl = PackageDecl String VersionNumber
                   | Export [Identifier]
-                  | TypeDecl Identifier TypeExpression
                   
   deriving (Eq, Show)
 
 data Identifier = Identifier String
   deriving (Eq, Show)
 
-data TypeExpression = ComponentLiteral {
-                          typeIsAbstract :: Bool
-                        , typeSuper :: Maybe[Identifier]
-                        , componentElements :: [ComponentElement]
-                      }
-                    | ObjectLiteral {
-                          typeIsAbstract :: Bool
-                        , typeSuper :: Maybe[Identifier]
-                        , objectElements :: [ObjectElement]
-                      }
+data VersionNumber = VersionNumber Int Int Int String
+  deriving (Eq)
 
-data ComponentElement = 
+instance Show VersionNumber where
+  show (VersionNumber x y z build) = (show x) ++ "." ++ (show y) ++ "." ++ (show z) ++ buildSuffix
+    where buildSuffix = if length build == 0 then "" else "-" ++ build
 
 ----------------------
 -- Test infrastructure
@@ -49,7 +43,8 @@ arbitraryPackageDecl :: Gen TopLevelDecl
 arbitraryPackageDecl = do
   len <- choose (1, 3) :: Gen Int
   names <- vectorOf len arbitraryIdentifierName
-  return $ PackageDecl $ intercalate "." names
+  v <- arbitrary :: Gen VersionNumber
+  return $ PackageDecl (intercalate "." names) v
 
 arbitraryExport = do
   n <- choose (1, 3) :: Gen Int
@@ -64,11 +59,18 @@ arbitraryIdentifierName = do
 instance Arbitrary Identifier where
   arbitrary = do 
     len <- choose (1, 8) :: Gen Int
-    first <- elements $ concat [letter, "_"]
-    rest <- vectorOf (len - 1) $ elements $ concat [letter, digit, "_"]
+    first <- elements $ concat [letters, "_"]
+    rest <- vectorOf (len - 1) $ elements $ concat [letters, digits, "_"]
     return $ Identifier $ first : rest
 
-letter = concat [['a'..'z'], ['A'..'Z']]
+letters = concat [['a'..'z'], ['A'..'Z']]
 
-digit = ['0'..'9']
+digits = ['0'..'9']
   
+instance Arbitrary VersionNumber where
+  arbitrary = do
+    x <- choose(0, 2) :: Gen Int
+    y <- choose(0, 2) :: Gen Int
+    z <- choose(0, 101) :: Gen Int
+    Identifier build <- arbitrary :: Gen Identifier
+    return $ VersionNumber x y z build

@@ -13,11 +13,11 @@ module Staq.Parser (
   parseTopLevelDecls
 ) where
 
-import Staq.SyntaxTree (TopLevelDecl(..), Identifier(..))
+import Staq.SyntaxTree
 
 import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
-import Control.Applicative ( (<$>) )
+import Control.Applicative ( (<$>), (*>) )
 import Control.Monad.Identity
 import Control.Monad (liftM)
 
@@ -31,12 +31,6 @@ import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
 
 import Test.QuickCheck
-
-data Expr = Const Integer
-          | Var String
-          | WhereClause Expr [Binding] deriving Show
-
-type Binding = (String, Expr)
 
 type HaskellLikeIndent = IndentT HaskellLike Identity
 
@@ -57,16 +51,15 @@ langDef = LanguageDef { commentStart = "{-"
 tokP :: IT.GenIndentTokenParser HaskellLike String () Identity
 tokP = makeTokenParser langDef
 
-kwPackage = IT.reserved tokP "package"
-kwExport = IT.reserved tokP "export"
-kwType = IT.reserved tokP "type"
-kwAbstract = IT.reserved tokP "abstract"
+bracesBlock = IT.bracesBlock tokP
 identifier = IT.identifier tokP
+integer = IT.integer tokP
+kwExport = IT.reserved tokP "export"
+kwPackage = IT.reserved tokP "package"
 opDot = IT.reservedOp tokP "."
 opEqual = IT.reservedOp tokP "="
-integer = IT.integer tokP
+opHyphen = IT.reservedOp tokP "-"
 semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
-bracesBlock = IT.bracesBlock tokP
 whiteSpace = IT.whiteSpace tokP
 
 parseTopLevelDecls :: String -> String -> Either ParseError [TopLevelDecl]
@@ -84,44 +77,33 @@ topLevelDecls = do whiteSpace
                    return decls
 
 topLevelDecl :: ParserM TopLevelDecl
-topLevelDecl = packageDecl <|> export <|> typeDecl
+topLevelDecl = packageDecl <|> export
 
 packageDecl :: ParserM TopLevelDecl
 packageDecl = do
   kwPackage
   name <- packageName
-  return $ PackageDecl name
+  version <- versionNumber
+  return $ PackageDecl name version
 
 packageName :: ParserM String
 packageName = liftM (intercalate ".") $ identifier `sepBy` opDot
+
+versionNumber :: ParserM VersionNumber
+versionNumber = do
+  x <- integer
+  opDot
+  y <- integer
+  opDot
+  z <- integer
+  build <- (opHyphen *> identifier) <|> return ""
+  return $ VersionNumber (fromIntegral x) (fromIntegral y) (fromIntegral z) build
 
 export :: ParserM TopLevelDecl
 export = do
   kwExport
   idents <- many1 $ identifier
   return $ Export $ map Identifier idents
-
-typeDecl :: ParserM TopLevelDecl
-typeDecl = do
-  kwType
-  typeName <- identifier
-  opEqual
-  typeExpr <- typeExpression
-  return $ TypeDecl typeName typeExpr
-
-typeExpression :: ParserM TypeExpression
-typeExpression = componentLiteral <|> objectLiteral <?> "type expression"
-
-componentLiteral :: ParserM TypeExpression
-componentLiteral = do
-  isAbstract <- indicator kwAbstract
-
-indicator :: ParserM a -> ParserM Bool
-indicator p = do
-  m <- optionalMaybe p
-  return $ case m of
-            Just _ -> True
-            Nothing -> False
 
 ----------------------
 -- Test infrastructure
@@ -140,11 +122,12 @@ instance RandomFormattable [TopLevelDecl] where
 
 instance RandomFormattable TopLevelDecl where
 
-  randomFormat indent (PackageDecl name) = do
+  randomFormat indent (PackageDecl name version) = do
     let indentation = replicate indent ' '
-    white <- randomHorizontalWhitespace
+    white1 <- randomHorizontalWhitespace
+    white2 <- randomHorizontalWhitespace
     le <- randomLineEnding
-    return $ indentation ++ "package" ++ white ++ name ++ le
+    return $ indentation ++ "package" ++ white1 ++ name ++ white2 ++ (show version) ++ le
 
   randomFormat indent (Export idents) = do
     let indentation = replicate indent ' '
@@ -250,8 +233,8 @@ randomSpaces min max = do
   n <- choose(min, max) :: Gen Int
   return $ replicate n ' '
 
-prop_parseIsInverseOfRandomFormat :: [TopLevelDecl] -> Gen Property
-prop_parseIsInverseOfRandomFormat decls = do
+prop_correctlyParsesRandomlyFormattedCode :: [TopLevelDecl] -> Gen Property
+prop_correctlyParsesRandomlyFormattedCode decls = do
   indent <- choose(0, 4)
   formatted <- randomFormat indent decls 
   return $ case parseTopLevelDecls formatted "test input" of
@@ -262,4 +245,4 @@ prop_parseIsInverseOfRandomFormat decls = do
                                                    "Parsed as: " ++ show decls' ++ "\n\n" ++
                                                    "Formatted as:" ++ "\n\n" ++ formatted) False
 
-runTests = quickCheckWith (stdArgs { maxSuccess=1000, chatty=False }) prop_parseIsInverseOfRandomFormat
+runTests = quickCheckWith (stdArgs { maxSuccess=1000, chatty=False }) prop_correctlyParsesRandomlyFormattedCode
