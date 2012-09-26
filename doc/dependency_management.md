@@ -1,35 +1,38 @@
 Staq Dependency Management
 ==========================
 
-There is a central registry of all public Staq modules in github:
-`git@github.com:deansher/staq-modules.git`.  If you want to make your module public, submit a pull
-request to update this registry.  (Include a suggestion for how to verify that you own the domain
-names used to construct the package names you are claiming.)
+Each Staq package has a version number, with the semantics defined at http://semver.org/ (v2.0.0-rc.1).
+The version number is declared in the `package` statement at the top of the package definition file.
 
-The directory structure of the registry corresponds to Staq package structure, except that each leaf
-module `xyzzy` is represented by a file `xyzzy.txt`. The file for a module has four
-whitespace-separated values on a single line with no other delimiters:
+There is a central registry of all public Staq packages in github:
+`git@github.com:deansher/staq-packages.git`.  If you want to make your package public, submit a pull
+request to update this registry.  (Include a suggestion for how to verify that you own the domain
+name or public website path used to construct the package names you are claiming.)
+
+The directory structure of the registry corresponds to Staq package structure, with each package
+`com.xyzzy.plugh` being represented by a file `plugh.txt` in the directory `com/xyzzy`. The file for
+a package has four whitespace-separated values on a single line with no other delimiters:
 
 * the version-control system, which can currently only be git
 
-* the URL of the repo containing the module
+* the URL of the repo containing the package
 
-* the branch in that repo that contains the module
+* the branch in that repo that contains the package
 
-* the relative path of the module from the root of the repo, which should be the name of the
+* the relative path of the package from the root of the repo, which should be the name of the
   directory that contains at least `node-out`, and `browser-out`, that preferably contains `src` and
   `README.md`, and that contains `contracts` if it does not contain `src`.  The root of the repo is
   represented by ".".
 
-If you want to release your module (or selected versions of it) locally (including within an
+If you want to release your package (or selected versions of it) locally (including within an
 organization), you can do this by creating a local directory tree that has the same structure as the
-public module registry and by providing the path of this local directory tree to the Staq compiler
-as --module-registry.  (This flag allows multiple local registry paths to be separated using the
+public package registry and by providing the path of this local directory tree to the Staq compiler
+as --package-registry.  (This flag allows multiple local registry paths to be separated using the
 same convention for `NODE_PATH`.)
 
-For rapid iteration during development, Staq also maintains a file ~/.staq/module_repos.txt that
-maps module names to the paths of local repo checkouts for those modules.  The Staq compiler updates
-this file, but you can edit it by hand when necessary.  Each line simply contains a module name and
+For rapid iteration during development, Staq also maintains a file ~/.staq/package_repos.txt that
+maps package names to the paths of local repo checkouts for those packages.  The Staq compiler updates
+this file, but you can edit it by hand when necessary.  Each line simply contains a package name and
 a local filesystem path (to the directory containing `node-out`, `browser-out`, etc.), separated by
 whitespace with no additional delimeters.
 
@@ -59,7 +62,7 @@ and that verifies the following invariants on your repo:
   one year after version 2.0.0 is released, all version spec symbolic dependency links for
   major version number 1 *except* 1.2.97+.js can be deleted.
 
-* Unless the current source for a module has a new major version number, the current contract must
+* Unless the current source for a package has a new major version number, the current contract must
   be a superset of the previous contract.
 
-* Each module's current output files must meet the current contract.
+* Each package's current output files must meet the current contract.
