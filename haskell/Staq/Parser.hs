@@ -14,7 +14,7 @@ module Staq.Parser (
   parseModule
 ) where
 
-import Staq.Language
+import Staq.Language hiding (moduleId)
 
 import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
@@ -29,6 +29,8 @@ import Data.String (fromString)
 
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
+
+import qualified Data.Strict.Maybe as SM
 
 import Text.Parsec
 import Text.Parsec.Prim
@@ -51,8 +53,9 @@ langDef = LanguageDef { commentStart = "{-"
                       , identLetter = alphaNum <|> char '_'
                       , opStart = oneOf ".,-+/*=<>"
                       , opLetter = oneOf ".,-+/*=<>"
-                      , reservedNames = [ "export" ]
-                      , reservedOpNames = [ "." , "," , "=", "-" ]
+                      -- have to check these for completeness periodically
+                      , reservedNames = [ "as", "export", "import", "module", "private", "public", "qualified" ]
+                      , reservedOpNames = [ ";", ",", ".", "=", "-", "+", "/" ]
                       , caseSensitive = True
                       , nestedComments = True
                       }
@@ -62,15 +65,28 @@ tokP = makeTokenParser langDef
 
 bracesBlock = IT.bracesBlock tokP
 parens = IT.parens tokP
-identifier = IT.identifier tokP
+rawIdentifier = IT.identifier tokP
 integer = IT.integer tokP
-kwExport = IT.reserved tokP "export"
-opDot = IT.reservedOp tokP "."
-opComma = IT.reservedOp tokP ","
-opEqual = IT.reservedOp tokP "="
-opHyphen = IT.reservedOp tokP "-"
 semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
 whiteSpace = IT.whiteSpace tokP
+
+-- When modifying these, change langDef too.
+kwAs = IT.reserved tokP "as"
+kwExport = IT.reserved tokP "export"
+kwImport = IT.reserved tokP "import"
+kwModule = IT.reserved tokP "module"
+kwPrivate = IT.reserved tokP "private"
+kwPublic = IT.reserved tokP "public"
+kwQualified = IT.reserved tokP "qualified"
+
+-- When modifying these, change langDef too.
+opColon = IT.reservedOp tokP ":"
+opComma = IT.reservedOp tokP ","
+opDot = IT.reservedOp tokP "."
+opEqual = IT.reservedOp tokP "="
+opHyphen = IT.reservedOp tokP "-"
+opPlus = IT.reservedOp tokP "+"
+opSlash = IT.reservedOp tokP "/"
 
 parseModule :: Text -> String -> Either ParseError VersionNumber
 parseModule sourceCode originName = parseStaq sourceCode originName versionNumber
@@ -80,6 +96,81 @@ parseStaq sourceCode originName production = runIdentity $ runGIPT production ()
 
 type Parser a = IndentParsecT Text () Identity a
 
+moduleSpec :: Parser ModuleDecl
+moduleSpec = do
+  pub <- publicOrPrivate
+  kwModule
+  id <- moduleId
+  exports <- possibleExportStatement
+  imports <- importStatements
+  decls <- topLevelDecls
+  
+  let props = SubModuleProperties pub -- TODO: How does TopModuleProperties work?
+      spec = ModuleSpec id props exports imports
+     
+  return $! ModuleDecl spec decls
+
+moduleId :: Parser ModuleId
+moduleId = do
+  org <- orgName
+  opSlash
+  pkg <- packageName
+  mod <- (opColon >> subModuleName) <|> return TopModuleName
+  return $! ModuleId org pkg mod
+
+publicOrPrivate :: Parser Bool
+publicOrPrivate = (kwPublic >> return True) <|> (kwPrivate >> return False)
+
+orgName :: Parser OrgName
+orgName = do
+  name <- (try userPlusDomainName <|> domainName)
+  return $! OrgName $ fromString name
+
+userPlusDomainName :: Parser String
+userPlusDomainName = do
+  user <- userName
+  opPlus
+  domain <- domainName
+  return $! user ++ "+" ++ domain
+
+legalDomainLabelFirstChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
+legalDomainLabelSubsequentChars = '-' : legalDomainLabelSubsequentChars
+
+legalUserNameFirstChars = '.' : legalDomainLabelSubsequentChars
+legalUserNameSubsequentChars = '-' : legalUserNameFirstChars
+
+userName :: Parser String
+userName = do
+  first <- oneOf legalUserNameFirstChars
+  rest <- many $ oneOf legalUserNameSubsequentChars
+  return $! first : rest
+
+domainName :: Parser String
+domainName = do
+  labels <- domainNameLabel `sepBy` opDot
+  return $! intercalate "." labels
+
+domainNameLabel :: Parser String
+domainNameLabel = do
+  first <- oneOf legalDomainLabelFirstChars
+  rest <- many $ oneOf legalDomainLabelSubsequentChars
+  return $! first : rest
+
+packageName :: Parser PackageName
+packageName = do
+  idents <- identifier `sepBy` opSlash
+  return $! PackageName $ Seq.fromList idents
+
+identifier :: Parser Identifier
+identifier = do
+  r <- rawIdentifier
+  return $! Identifier $ fromString r
+
+subModuleName :: Parser ModuleName
+subModuleName = do
+  ident <- identifier
+  return $! SubModuleName ident
+  
 versionNumber :: Parser VersionNumber
 versionNumber = do
   x <- integer
@@ -87,14 +178,37 @@ versionNumber = do
   y <- integer
   opDot
   z <- integer
-  build <- (opHyphen *> identifier) <|> (return $! "")
+  build <- (opHyphen *> rawIdentifier) <|> (return "")
   return $! VersionNumber (fromIntegral x) (fromIntegral y) (fromIntegral z) (fromString build)
 
-export :: Parser (Seq ModuleExport)
-export = do
+possibleExportStatement :: Parser (Seq ModuleExport)
+possibleExportStatement = exportStatement <|> (return $! Seq.empty)
+
+exportStatement :: Parser (Seq ModuleExport)
+exportStatement = do
   kwExport
   idents <- parens $ identifier `sepBy` opComma
-  return $! Seq.fromList $ map (ModuleExport . Identifier . fromString) idents
+  return $! Seq.fromList $ map ModuleExport idents
+
+importStatements :: Parser (Seq ModuleImport)
+importStatements = Seq.fromList <$> many importStatement
+
+importStatement :: Parser ModuleImport
+importStatement = do
+  kwImport
+  isQualified <- option False (kwQualified >> return True)
+  mid <- moduleId
+  qual <- if isQualified
+          then kwAs >> (SM.Just <$> identifier)
+          else return SM.Nothing
+  idents <- option Seq.empty importIdentifierList
+  return $! ModuleImport mid qual idents
+
+importIdentifierList :: Parser (Seq Identifier)
+importIdentifierList = parens (Seq.fromList <$> identifier `sepBy` opComma)
+
+topLevelDecls :: Parser (Seq TopLevelDecl)
+topLevelDecls = return Seq.empty
 
 ----------------------
 -- Test infrastructure

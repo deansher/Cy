@@ -31,6 +31,8 @@ import Control.Monad (replicateM)
 import qualified Data.Text as Text
 import Data.Text (Text)
 
+import qualified Data.Strict.Maybe as SM
+
 import Data.String (fromString)
 import Data.List (intercalate)
 
@@ -79,12 +81,13 @@ data Identifier = Identifier !Text
   deriving (Eq, Read, Show)
 
 data ModuleExport = ModuleExport {
-    modexportIdentifier :: !Identifier
+    exportIdentifier :: !Identifier
 } deriving (Eq, Read, Show)
 
 data ModuleImport = ModuleImport {
-    modimportModuleId :: !ModuleId
-  , modimportIdentifiers :: !(Seq Identifier)
+    importModuleId :: !ModuleId
+  , importQualifier :: !(SM.Maybe Identifier)
+  , importIdentifiers :: !(Seq Identifier)
 } deriving (Eq, Read, Show)
 
 data VersionNumber = VersionNumber !Int !Int !Int !Text
@@ -152,7 +155,7 @@ instance Arbitrary ModuleName where
   arbitrary = do
     isTopLevel <- arbitrary :: Gen Bool
     if isTopLevel then do
-      return $! TopModuleName
+      return TopModuleName
     else do
       n <- arbitrary :: Gen Identifier
       return $! SubModuleName n
@@ -167,10 +170,11 @@ instance Arbitrary ModuleImport where
     mid <- arbitrary :: Gen ModuleId
     len <- choose (1, 3) :: Gen Int
     idents <- vectorOf len arbitrary :: Gen [Identifier]
-    return $! ModuleImport mid $ Seq.fromList idents
+    qualifier <- oneof [return SM.Nothing, SM.Just `fmap` (arbitrary :: Gen Identifier)]
+    return $! ModuleImport mid qualifier $ Seq.fromList idents
 
 instance Arbitrary TopLevelDecl where
-  arbitrary = return $! TopLevelDecl
+  arbitrary = return TopLevelDecl
 
 arbitraryIdentifierName :: Gen String
 arbitraryIdentifierName = do
