@@ -7,13 +7,14 @@
 *
 * ***** END LICENSE BLOCK ***** -}
 
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, BangPatterns, OverloadedStrings #-}
+{-# OPTIONS_GHC -funbox-strict-fields #-}
 
 module Staq.Parser (
-  parseTopLevelDecls
+  parseModule
 ) where
 
-import Staq.SyntaxTree
+import Staq.Language
 
 import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
@@ -21,12 +22,20 @@ import Control.Applicative ( (<$>), (*>) )
 import Control.Monad.Identity
 import Control.Monad (liftM)
 
+import qualified Data.Text as Text
+import Data.Text (Text)
+
+import Data.String (fromString)
+
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq)
+
 import Text.Parsec
 import Text.Parsec.Prim
-import Text.Parsec.Token (GenTokenParser)
-import Text.Parsec.IndentParsec(runGIPT, foldedLinesOf)
+import Text.Parsec.Token (makeTokenParser, GenTokenParser, GenLanguageDef(..))
+import Text.Parsec.Text () -- We just need the Stream instance declaration for Text
 
-import Text.Parsec.Token (makeTokenParser, GenLanguageDef(..))
+import Text.Parsec.IndentParsec(runGIPT, foldedLinesOf)
 import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
 
@@ -34,76 +43,58 @@ import Test.QuickCheck
 
 type HaskellLikeIndent = IndentT HaskellLike Identity
 
-langDef :: GenLanguageDef String () HaskellLikeIndent
+langDef :: GenLanguageDef Text () HaskellLikeIndent
 langDef = LanguageDef { commentStart = "{-"
                       , commentEnd   = "-}"
                       , commentLine  = "--"
-                      , identStart = letter   <|> char '_'
+                      , identStart = letter <|> char '_'
                       , identLetter = alphaNum <|> char '_'
-                      , opStart = oneOf "-+/*=<>"
-                      , opLetter = oneOf "-+/*=<>"
-                      , reservedNames = [ "where" ]
-                      , reservedOpNames = [ "=" , "+" , "-", "*", "/"]
-                      , caseSensitive = False
+                      , opStart = oneOf ".,-+/*=<>"
+                      , opLetter = oneOf ".,-+/*=<>"
+                      , reservedNames = [ "export" ]
+                      , reservedOpNames = [ "." , "," , "=", "-" ]
+                      , caseSensitive = True
                       , nestedComments = True
                       }
 
-tokP :: IT.GenIndentTokenParser HaskellLike String () Identity
+tokP :: IT.GenIndentTokenParser HaskellLike Text () Identity
 tokP = makeTokenParser langDef
 
 bracesBlock = IT.bracesBlock tokP
+parens = IT.parens tokP
 identifier = IT.identifier tokP
 integer = IT.integer tokP
 kwExport = IT.reserved tokP "export"
-kwPackage = IT.reserved tokP "package"
 opDot = IT.reservedOp tokP "."
+opComma = IT.reservedOp tokP ","
 opEqual = IT.reservedOp tokP "="
 opHyphen = IT.reservedOp tokP "-"
 semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
 whiteSpace = IT.whiteSpace tokP
 
-parseTopLevelDecls :: String -> String -> Either ParseError [TopLevelDecl]
-parseTopLevelDecls sourceCode originName = parseStaq sourceCode originName topLevelDecls
+parseModule :: Text -> String -> Either ParseError VersionNumber
+parseModule sourceCode originName = parseStaq sourceCode originName versionNumber
 
-parseStaq :: String -> String -> ParserM a -> Either ParseError a
+parseStaq :: Text -> String -> Parser a -> Either ParseError a
 parseStaq sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
 
-type ParserM a = IndentParsecT String () Identity a
+type Parser a = IndentParsecT Text () Identity a
 
-topLevelDecls :: ParserM [TopLevelDecl]
-topLevelDecls = do whiteSpace
-                   decls <- semiSepOrFoldedLines topLevelDecl
-                   eof
-                   return decls
-
-topLevelDecl :: ParserM TopLevelDecl
-topLevelDecl = packageDecl <|> export
-
-packageDecl :: ParserM TopLevelDecl
-packageDecl = do
-  kwPackage
-  name <- packageName
-  version <- versionNumber
-  return $ PackageDecl name version
-
-packageName :: ParserM String
-packageName = liftM (intercalate ".") $ identifier `sepBy` opDot
-
-versionNumber :: ParserM VersionNumber
+versionNumber :: Parser VersionNumber
 versionNumber = do
   x <- integer
   opDot
   y <- integer
   opDot
   z <- integer
-  build <- (opHyphen *> identifier) <|> return ""
-  return $ VersionNumber (fromIntegral x) (fromIntegral y) (fromIntegral z) build
+  build <- (opHyphen *> identifier) <|> (return $! "")
+  return $! VersionNumber (fromIntegral x) (fromIntegral y) (fromIntegral z) (fromString build)
 
-export :: ParserM TopLevelDecl
+export :: Parser (Seq ModuleExport)
 export = do
   kwExport
-  idents <- many1 $ identifier
-  return $ Export $ map Identifier idents
+  idents <- parens $ identifier `sepBy` opComma
+  return $! Seq.fromList $ map (ModuleExport . Identifier . fromString) idents
 
 ----------------------
 -- Test infrastructure
@@ -112,32 +103,12 @@ class RandomFormattable a where
   -- Given an indentation level and a RandomFormattable, produce a Gen String.
   randomFormat :: Int -> a -> Gen String
 
-instance RandomFormattable [TopLevelDecl] where
-  randomFormat indent decls = do
-    plusIndent <- choose (0, 4) :: Gen Int
-    let declActions = map (randomFormat (indent + plusIndent)) decls
-        actions = intersperse (randomBlankLines indent) declActions
-    snippets <- sequence actions
-    return $ concat snippets
-
-instance RandomFormattable TopLevelDecl where
-
-  randomFormat indent (PackageDecl name version) = do
-    let indentation = replicate indent ' '
-    white1 <- randomHorizontalWhitespace
-    white2 <- randomHorizontalWhitespace
-    le <- randomLineEnding
-    return $ indentation ++ "package" ++ white1 ++ name ++ white2 ++ (show version) ++ le
-
-  randomFormat indent (Export idents) = do
-    let indentation = replicate indent ' '
-    white <- randomHorizontalWhitespace
-    le <- randomLineEnding
-    foldedIdents <- randomFold indent idents
-    return $ indentation ++ "export" ++ white ++ foldedIdents ++ le
-
 instance RandomFormattable Identifier where
-  randomFormat indent (Identifier name) = return name
+  randomFormat indent (Identifier name) = return $! Text.unpack name
+
+instance RandomFormattable VersionNumber where
+  randomFormat ident v =
+    return $! displayVersionNumber v
 
 randomFold :: (RandomFormattable a) => Int -> [a] -> Gen String
 randomFold indent xs = concat <$> mapM (randomFold1 indent) xs
@@ -150,9 +121,9 @@ randomFold1 indent x = do
                              le <- randomLineEnding
                              plusIndent <- choose(1, 4) :: Gen Int
                              let indentation = replicate (indent + plusIndent) ' '
-                             return $ le ++ indentation
+                             return $! le ++ indentation
   formatX <- randomFormat indent x
-  return $ leadingWhite ++ formatX
+  return $! leadingWhite ++ formatX
 
 randomHorizontalWhitespace :: Gen String
 randomHorizontalWhitespace = do
@@ -164,28 +135,28 @@ randomHorizontalWhitespace = do
       s1 <- randomSpaces 0 2
       s2 <- randomSpaces 0 2
       c <- randomNestedComment
-      return $ s1 ++ (deleteMatching "\n" c) ++ s2
+      return $! s1 ++ (deleteMatching "\n" c) ++ s2
 
 randomBlankLines :: Int -> Gen String
 randomBlankLines indent = do
   n <- choose(1, 4) :: Gen Int
   lines <- vectorOf n randomLineEnding :: Gen [String]
-  return $ concat lines
+  return $! concat lines
 
 randomLineEnding :: Gen String
 randomLineEnding = do
   spaces <- randomSpaces 0 4
   n <- choose(1, 10) :: Gen Int
   if n <= 8
-    then return $ spaces ++ "\n"
+    then return $! spaces ++ "\n"
     else if n == 9
            then do
              text <- randomTextAvoiding ["\n"]
-             return $ spaces ++ "--" ++ text ++ "\n"
+             return $! spaces ++ "--" ++ text ++ "\n"
            else do
              le <- randomLineEnding
              comment <- randomNestedComment
-             return $ spaces ++ comment ++ le
+             return $! spaces ++ comment ++ le
 
 randomNestedComment :: Gen String
 randomNestedComment = do
@@ -193,17 +164,17 @@ randomNestedComment = do
   text <- randomTextAvoiding ["-}", "{-"]
   n <- choose(1, 10) :: Gen Int
   if n > 1
-    then return $ "{-" ++ text ++ (curlyBuffer text) ++ "-}"
+    then return $! "{-" ++ text ++ (curlyBuffer text) ++ "-}"
     else do
       text' <- randomTextAvoiding ["-}", "{-"]
       nested <- randomNestedComment
-      return $ "{-" ++ text ++ nested ++ text' ++ (curlyBuffer text') ++ "-}"
+      return $! "{-" ++ text ++ nested ++ text' ++ (curlyBuffer text') ++ "-}"
 
 randomTextAvoiding :: [String] -> Gen String
 randomTextAvoiding substrings = do
   n <- choose(0, 10)
   raw <- vectorOf n arbitrary :: Gen String
-  return $ eliminateAll substrings raw
+  return $! eliminateAll substrings raw
 
 eliminateAll :: Eq a => [[a]] -> [a] -> [a]
 eliminateAll subseqs xs =
@@ -231,18 +202,18 @@ deleteMatching subseq xs = del subseq xs []
 randomSpaces :: Int -> Int -> Gen String
 randomSpaces min max = do 
   n <- choose(min, max) :: Gen Int
-  return $ replicate n ' '
+  return $! replicate n ' '
 
-prop_correctlyParsesRandomlyFormattedCode :: [TopLevelDecl] -> Gen Property
-prop_correctlyParsesRandomlyFormattedCode decls = do
+prop_correctlyParsesRandomlyFormattedCode :: VersionNumber -> Gen Property
+prop_correctlyParsesRandomlyFormattedCode mod = do
   indent <- choose(0, 4)
-  formatted <- randomFormat indent decls 
-  return $ case parseTopLevelDecls formatted "test input" of
-             Left e       -> printTestCase (show e ++ "\n\n" ++ formatted) False
-             Right decls' -> if decls' == decls
-                               then property True
-                               else printTestCase ("Original:  " ++ show decls ++ "\n\n" ++
-                                                   "Parsed as: " ++ show decls' ++ "\n\n" ++
-                                                   "Formatted as:" ++ "\n\n" ++ formatted) False
+  formatted <- randomFormat indent mod
+  return $! case parseModule (Text.pack formatted) "test input" of
+              Left e     -> printTestCase (show e ++ "\n\n" ++ formatted) False
+              Right mod' -> if mod' == mod
+                            then property True
+                            else printTestCase ("Original:  " ++ show mod ++ "\n\n" ++
+                                                "Parsed as: " ++ show mod' ++ "\n\n" ++
+                                                "Formatted as:" ++ "\n\n" ++ formatted) False
 
 runTests = quickCheckWith (stdArgs { maxSuccess=1000, chatty=False }) prop_correctlyParsesRandomlyFormattedCode
