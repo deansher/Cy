@@ -248,11 +248,38 @@ topLevelDecls = return Seq.empty
 -- Test infrastructure
 
 class RandomFormattable a where
-  -- Given an indentation level and a RandomFormattable, produce a Gen String.
+  -- Given a base indentation level and a RandomFormattable, produce a Gen String.
   randomFormat :: Int -> a -> Gen String
 
 instance RandomFormattable ModuleDecl where
-  randomFormat indent moduleDecl = return ""
+  randomFormat indent decl = do
+    let isTop = case midModuleName $ moduleId decl of
+                  TopModuleName -> True
+                  _             -> False
+
+    header <- if isTop then randomFormatTopModuleHeader decl
+                       else randomFormatSubModuleHeader decl
+
+    exports <- randomFormatExports $ moduleExports decl
+    imports <- randomFormatImports $ moduleImports decl
+    decls <- randomFormatTopLevelDecls $ moduleDecls decl
+
+    return $! header ++ exports ++ imports ++ decls
+
+randomFormatTopModuleHeader :: ModuleDecl -> Gen String
+randomFormatTopModuleHeader decl = return ""
+
+randomFormatSubModuleHeader :: ModuleDecl -> Gen String
+randomFormatSubModuleHeader decl = return ""
+
+randomFormatExports :: Seq ModuleExport -> Gen String
+randomFormatExports exports = return ""
+
+randomFormatImports :: Seq ModuleImport -> Gen String
+randomFormatImports exports = return ""
+
+randomFormatTopLevelDecls :: Seq TopLevelDecl -> Gen String
+randomFormatTopLevelDecls decls = return ""
 
 instance RandomFormattable Identifier where
   randomFormat indent (Identifier name) = return $! Text.unpack name
@@ -261,11 +288,28 @@ instance RandomFormattable VersionNumber where
   randomFormat ident v =
     return $! displayVersionNumber v
 
+{- Given @indent@ and @xs@, randomly fold the @xs@ across lines while maintaining at least indent
+   level @indent@.  Each @x@ formatted after either some horizontal whitespace or a random line.
+ -}
 randomFold :: (RandomFormattable a) => Int -> [a] -> Gen String
-randomFold indent xs = concat <$> mapM (randomFold1 indent) xs
+randomFold indent xs = concat <$> mapM (randomFormatAndFold indent) xs
 
-randomFold1 :: (RandomFormattable a) => Int -> a -> Gen String
-randomFold1 indent x = do
+randomFormatAndFold :: (RandomFormattable a) => Int -> a -> Gen String
+randomFormatAndFold indent x = do
+  s <- randomFormat indent x
+  randomFold1 indent s
+
+{- Given @indent@, @xs@, and @sep@, randomly fold the @xs@ across lines in the manner of @randomFold@, but
+   separated by @sep@.
+ -}
+randomFoldSepBy :: (RandomFormattable a) => Int -> [a] -> String -> Gen String
+randomFoldSepBy indent xs sep = do
+  fs <- forM xs $ \x -> randomFormat indent x
+  let ss = intersperse sep fs
+  concat <$> mapM (randomFold1 indent) ss
+
+randomFold1 :: Int -> String -> Gen String
+randomFold1 indent s = do
   n <- choose(1, 4) :: Gen Int
   leadingWhite <- if n > 1 then randomHorizontalWhitespace
                            else do
@@ -273,8 +317,7 @@ randomFold1 indent x = do
                              plusIndent <- choose(1, 4) :: Gen Int
                              let indentation = replicate (indent + plusIndent) ' '
                              return $! le ++ indentation
-  formatX <- randomFormat indent x
-  return $! leadingWhite ++ formatX
+  return $! leadingWhite ++ s
 
 randomHorizontalWhitespace :: Gen String
 randomHorizontalWhitespace = do
