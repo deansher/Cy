@@ -17,3 +17,6 @@ When searching (explicitly or -- more typically -- implicitly in the IDE) for a 
 package API is used similarly to Hoogle and the social activity improves keyword matching.  Ranking
 of search results is based on a combination of relevance, package quality, and developer scores.
 
+The Staq social environment makes it easy to request proposals for freelance coding by specifying a
+contract, a test coverage level, optionally a dollar amount, and optionally minimum developer
+reputation and achievement scores.
