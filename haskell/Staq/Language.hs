@@ -79,6 +79,7 @@ data ModuleExport = ModuleExport {
     exportIdentifier :: !Identifier
 } deriving (Eq, Read, Show)
 
+-- todo: Add support for "hiding"
 data ModuleImport = ModuleImport {
     importModuleId :: !ModuleId
   , importQualifier :: !(SM.Maybe Identifier)

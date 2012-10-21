@@ -14,7 +14,7 @@ module Staq.Parser (
   parseModule
 ) where
 
-import Staq.Language hiding (moduleId)
+import Staq.Language
 
 import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
@@ -54,9 +54,15 @@ langDef = LanguageDef { commentStart = "{-"
                       , identLetter = alphaNum <|> char '_' <|> char '\''
                       , opStart = oneOf ".,-+/*=<>;"
                       , opLetter = oneOf ".,-+/*=<>;"
+                      
                       -- Check these for completeness periodically.
-                      , reservedNames = [ "as", "export", "import", "module", "private", "public", "qualified" ]
+                      
+                      , reservedNames = [ "as", "export", "import", "module", "package"
+                                        ,"private", "public", "qualified"
+                                        ]
+                                        
                       , reservedOpNames = [ ";", ",", ".", "=", "-", "+", "/" ]
+                      
                       , caseSensitive = True
                       , nestedComments = True
                       }
@@ -77,6 +83,7 @@ kwAs = IT.reserved tokP "as"
 kwExport = IT.reserved tokP "export"
 kwImport = IT.reserved tokP "import"
 kwModule = IT.reserved tokP "module"
+kwPackage = IT.reserved tokP "package"
 kwPrivate = IT.reserved tokP "private"
 kwPublic = IT.reserved tokP "public"
 kwQualified = IT.reserved tokP "qualified"
@@ -98,26 +105,52 @@ parseStaq sourceCode originName production = runIdentity $ runGIPT production ()
 
 type Parser a = IndentParsecT Text () Identity a
 
-moduleDecl :: Parser ModuleDecl
-moduleDecl = do
+topModuleHeader :: Parser (ModuleId, ModuleProperties)
+topModuleHeader = do
+  kwPackage
+  mid <- topModuleId
+  version <- versionNumber
+  return $! (mid, TopModuleProperties version)
+
+subModuleHeader :: Parser (ModuleId, ModuleProperties)
+subModuleHeader = do
   pub <- publicOrPrivate
   kwModule
-  mid <- moduleId
+  mid <- subModuleId
+  return $! (mid, SubModuleProperties pub)
+
+moduleDecl :: Parser ModuleDecl
+moduleDecl = do
+  (mid, props) <- (topModuleHeader <|> subModuleHeader)
   exports <- possibleExportStatement
   imports <- importStatements
   decls <- topLevelDecls
-  
-  let props = SubModuleProperties pub -- TODO: How does TopModuleProperties work?
-     
   return $! ModuleDecl mid props exports imports decls
 
-moduleId :: Parser ModuleId
-moduleId = do
+topModuleId :: Parser ModuleId
+topModuleId = do
+  (org, pkg) <- moduleOrgAndPackage
+  return $! ModuleId org pkg TopModuleName
+
+subModuleId :: Parser ModuleId
+subModuleId = do
+  (org, pkg) <- moduleOrgAndPackage
+  opColon
+  mod <- subModuleName
+  return $! ModuleId org pkg mod
+
+anyModuleId :: Parser ModuleId
+anyModuleId = do
+  (org, pkg) <- moduleOrgAndPackage
+  mod <- (opColon >> subModuleName) <|> (return TopModuleName)
+  return $! ModuleId org pkg mod
+
+moduleOrgAndPackage :: Parser (OrgName, PackageName)
+moduleOrgAndPackage = do
   org <- orgName
   opSlash
   pkg <- packageName
-  mod <- (opColon >> subModuleName) <|> return TopModuleName
-  return $! ModuleId org pkg mod
+  return $! (org, pkg)
 
 publicOrPrivate :: Parser Bool
 publicOrPrivate = (kwPublic >> return True) <|> (kwPrivate >> return False)
@@ -198,7 +231,7 @@ importStatement :: Parser ModuleImport
 importStatement = foldedLinesOf $ do
   kwImport
   isQualified <- option False (kwQualified >> return True)
-  mid <- moduleId
+  mid <- anyModuleId
   qual <- if isQualified
           then kwAs >> (SM.Just <$> identifier)
           else return SM.Nothing
