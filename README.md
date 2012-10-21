@@ -1,19 +1,29 @@
 Staq
-=======
-The "low haskell" software platform,
-where the functions are pure, the statements have effects, and the monads live in "for" statements.
+====
+The first software development platform designed from the ground up for "social synergy" --
+achieving a strong network effect that amplifies the contributions of individual developers.
+
+Staq aspires to preserve the beauty of Haskell, but in a simpler and more approachable way.  Staq
+is a "low Haskell" world where the functions are pure, the statements have effects, and the monads
+live in "for" statements.
 
 Compiles to JavaScript, the winner in the write-once-run-everywhere war.
 
 Created by Dean Thompson.
 
-Goals
------
-Staq is a platform for building "stackable abstractions" -- abstractions that can be composed and
-layered while maintaining a clear, concise behavioral contract.  The basic building blocks of Staq
-(pure functions and actors) are chosen to be easily and accurately composable and highly testable.
+Achieving Social Synergy
+------------------------
 
-The language attempts to preserve the beauty of Haskell, but in a simpler and more approachable way.
+Staq is driving by the belief that the following ingredients are essential to social synergy:
+
+- Learnable Programming, as envisioned by Bret Victor. http://worrydream.com/LearnableProgramming/
+
+- "stackable abstractions" -- abstractions that can be composed and layered while maintaining a
+clear, concise behavioral contract.  The basic building blocks of Staq (pure functions and actors)
+are chosen to be easily and accurately composable and highly testable.
+
+- Social, code management, and debugging facilities inherent in the platform
+
 Essentially, every function implicitly runs in an ST monad (Haskell's "state transformer"), with
 language support for vars (variables) in that monad.  Instead of the IO monad, real-world effects
 are implemented as actors called "components".  Primitive IO operations are implemented underneath
