@@ -40,6 +40,7 @@ import Text.Parsec.Text () -- We just need the Stream instance declaration for T
 import Text.Parsec.IndentParsec(runGIPT, foldedLinesOf)
 import qualified Text.Parsec.IndentParsec.Token as IT
 import Text.Parsec.IndentParsec.Prim
+import Text.Parsec.IndentParsec.Combinator
 
 import Test.QuickCheck
 
@@ -50,10 +51,10 @@ langDef = LanguageDef { commentStart = "{-"
                       , commentEnd   = "-}"
                       , commentLine  = "--"
                       , identStart = letter <|> char '_'
-                      , identLetter = alphaNum <|> char '_'
-                      , opStart = oneOf ".,-+/*=<>"
-                      , opLetter = oneOf ".,-+/*=<>"
-                      -- have to check these for completeness periodically
+                      , identLetter = alphaNum <|> char '_' <|> char '\''
+                      , opStart = oneOf ".,-+/*=<>;"
+                      , opLetter = oneOf ".,-+/*=<>;"
+                      -- Check these for completeness periodically.
                       , reservedNames = [ "as", "export", "import", "module", "private", "public", "qualified" ]
                       , reservedOpNames = [ ";", ",", ".", "=", "-", "+", "/" ]
                       , caseSensitive = True
@@ -67,8 +68,9 @@ bracesBlock = IT.bracesBlock tokP
 parens = IT.parens tokP
 rawIdentifier = IT.identifier tokP
 integer = IT.integer tokP
-semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
 whiteSpace = IT.whiteSpace tokP
+semiSepOrFoldedLines = IT.semiSepOrFoldedLines tokP
+commaSepOrFoldedLines = IT.commaSepOrFoldedLines tokP
 
 -- When modifying these, change langDef too.
 kwAs = IT.reserved tokP "as"
@@ -88,27 +90,26 @@ opHyphen = IT.reservedOp tokP "-"
 opPlus = IT.reservedOp tokP "+"
 opSlash = IT.reservedOp tokP "/"
 
-parseModule :: Text -> String -> Either ParseError VersionNumber
-parseModule sourceCode originName = parseStaq sourceCode originName versionNumber
+parseModule :: Text -> String -> Either ParseError ModuleDecl
+parseModule sourceCode originName = parseStaq sourceCode originName moduleDecl
 
 parseStaq :: Text -> String -> Parser a -> Either ParseError a
 parseStaq sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
 
 type Parser a = IndentParsecT Text () Identity a
 
-moduleSpec :: Parser ModuleDecl
-moduleSpec = do
+moduleDecl :: Parser ModuleDecl
+moduleDecl = do
   pub <- publicOrPrivate
   kwModule
-  id <- moduleId
+  mid <- moduleId
   exports <- possibleExportStatement
   imports <- importStatements
   decls <- topLevelDecls
   
   let props = SubModuleProperties pub -- TODO: How does TopModuleProperties work?
-      spec = ModuleSpec id props exports imports
      
-  return $! ModuleDecl spec decls
+  return $! ModuleDecl mid props exports imports decls
 
 moduleId :: Parser ModuleId
 moduleId = do
@@ -183,9 +184,9 @@ versionNumber = do
 
 possibleExportStatement :: Parser (Seq ModuleExport)
 possibleExportStatement = exportStatement <|> (return $! Seq.empty)
-
+                        
 exportStatement :: Parser (Seq ModuleExport)
-exportStatement = do
+exportStatement = foldedLinesOf $ do
   kwExport
   idents <- parens $ identifier `sepBy` opComma
   return $! Seq.fromList $ map ModuleExport idents
@@ -194,7 +195,7 @@ importStatements :: Parser (Seq ModuleImport)
 importStatements = Seq.fromList <$> many importStatement
 
 importStatement :: Parser ModuleImport
-importStatement = do
+importStatement = foldedLinesOf $ do
   kwImport
   isQualified <- option False (kwQualified >> return True)
   mid <- moduleId
@@ -216,6 +217,9 @@ topLevelDecls = return Seq.empty
 class RandomFormattable a where
   -- Given an indentation level and a RandomFormattable, produce a Gen String.
   randomFormat :: Int -> a -> Gen String
+
+instance RandomFormattable ModuleDecl where
+  randomFormat indent moduleDecl = return ""
 
 instance RandomFormattable Identifier where
   randomFormat indent (Identifier name) = return $! Text.unpack name
@@ -318,7 +322,7 @@ randomSpaces min max = do
   n <- choose(min, max) :: Gen Int
   return $! replicate n ' '
 
-prop_correctlyParsesRandomlyFormattedCode :: VersionNumber -> Gen Property
+prop_correctlyParsesRandomlyFormattedCode :: ModuleDecl -> Gen Property
 prop_correctlyParsesRandomlyFormattedCode mod = do
   indent <- choose(0, 4)
   formatted <- randomFormat indent mod

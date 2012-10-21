@@ -12,7 +12,6 @@
 
 module Staq.Language (
     ModuleDecl(..)
-  , ModuleSpec(..)
   , ModuleId(..)
   , ModuleProperties(..)
   , OrgName(..)
@@ -42,15 +41,11 @@ import Data.Sequence (Seq)
 import Test.QuickCheck
 
 data ModuleDecl = ModuleDecl {
-    moduleSpec :: !ModuleSpec
-  , moduleDecls :: !(Seq TopLevelDecl)
-} deriving (Eq, Show, Read)
-
-data ModuleSpec = ModuleSpec {
     moduleId :: !ModuleId
   , moduleProperties :: !ModuleProperties
   , moduleExports :: !(Seq ModuleExport)
   , moduleImports :: !(Seq ModuleImport)
+  , moduleDecls :: !(Seq TopLevelDecl)
 } deriving (Eq, Show, Read)
 
 data ModuleId = ModuleId {
@@ -101,20 +96,15 @@ displayVersionNumber (VersionNumber x y z build) =
 
 instance Arbitrary ModuleDecl where
   arbitrary = do
-    mspec <- arbitrary :: Gen ModuleSpec
-    len <- choose(1, 5) :: Gen Int
-    decls <- vectorOf len arbitrary :: Gen [TopLevelDecl]
-    return $! ModuleDecl mspec $ Seq.fromList decls
-
-instance Arbitrary ModuleSpec where
-  arbitrary = do
     mid <- arbitrary :: Gen ModuleId
     props <- arbitrary :: Gen ModuleProperties
     nexp <- choose(0, 3) :: Gen Int
     exports <- vectorOf nexp arbitrary :: Gen [ModuleExport]
     nimp <- choose(0, 3) :: Gen Int
     imports <- vectorOf nimp arbitrary :: Gen [ModuleImport]
-    return $! ModuleSpec mid props (Seq.fromList exports) (Seq.fromList imports)
+    len <- choose(1, 5) :: Gen Int
+    decls <- vectorOf len arbitrary :: Gen [TopLevelDecl]
+    return $! ModuleDecl mid props (Seq.fromList exports) (Seq.fromList imports) (Seq.fromList decls)
 
 instance Arbitrary ModuleId where
   arbitrary = do
