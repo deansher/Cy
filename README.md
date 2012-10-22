@@ -7,27 +7,52 @@ Staq aspires to preserve the beauty of Haskell, but in a simpler and more approa
 is a "low Haskell" world where the functions are pure, the statements have effects, and the monads
 live in "for" statements.
 
-Compiles to JavaScript, the winner in the write-once-run-everywhere war.
+Staq compiles to JavaScript, the winner in the write-once-run-everywhere war.
 
-Created by Dean Thompson.
+Staq was created by Dean Thompson.
+
 
 Achieving Social Synergy
 ------------------------
 
 Staq is driving by the belief that the following ingredients are essential to social synergy:
 
-- Learnable Programming, as envisioned by Bret Victor. http://worrydream.com/LearnableProgramming/
+- [Learnable Programming](http://worrydream.com/LearnableProgramming/), as envisioned by Bret
+  Victor.  
 
-- "stackable abstractions" -- abstractions that can be composed and layered while maintaining a
-clear, concise behavioral contract.  The basic building blocks of Staq (pure functions and actors)
-are chosen to be easily and accurately composable and highly testable.
+- "Stackable abstractions" -- abstractions that can be composed and layered while maintaining a
+  clear, concise behavioral contract.  The basic building blocks of Staq (pure functions and actors)
+  are chosen to be easily and accurately composable and highly testable.
 
-- Social, code management, and debugging facilities inherent in the platform
+- Social, code management, and debugging facilities inherent in the platform.
 
-Essentially, every function implicitly runs in an ST monad (Haskell's "state transformer"), with
-language support for vars (variables) in that monad.  Instead of the IO monad, real-world effects
-are implemented as actors called "components".  Primitive IO operations are implemented underneath
-the Staq platform (in JavaScript) and wrapped in components.
+One reasonable way of looking at Staq to see it as language and platform that are driven from the
+ground up by the goal of realizing Bret Victor's vision of Learnable Programming.  Staq is also inspired
+partly by Chris Granger's [Light Table](http://www.chris-granger.com/2012/04/12/light-table---a-new-ide-concept/)
+project, but with a belief that a new language and platform are necessary to realize the full
+potential of that direction.
+
+Staq's IDE will apply Bret's ideas about "creating by reacting" and "recomposition" by having the
+IDE automatically pull in open-source code examples that meet the developer's needs, much as chess
+software pulls in examples of public games that proceeded from the current position.  Staq even
+generates potential code to meet the developer's needs, much as chess software shows potential lines
+of play and their likely outcomes.For example, when the developer starts writing a signature and
+contract for a function, the IDE will suggest existing functions in open-source code that have that
+signature and meet that contract.  It will decorate each suggested function with its quality score
+and the developer's reputation and achievement scores.  The intended feel is much like how chess
+software shows potential lines of play with their statistics.
+
+The IDE will even suggest implementations of the function which combine small numbers of existing
+functions to meet that signature and contract.  The developer can browse across to examples in
+public source code that have combined those functions in that way.  The intended feel is much
+like how chess software shows references to published games which have proceeded from the current
+board position or from a potential line of play.
+
+From a linguistic perspective, Staq aspires to preserve the beauty of Haskell, but in a simpler and
+more approachable way.  Essentially, every function implicitly runs in an ST monad (Haskell's "state
+transformer"), with language support for vars (variables) in that monad.  Instead of the IO monad,
+real-world effects are implemented as actors called "components".  Primitive IO operations are
+implemented underneath the Staq platform (in JavaScript) and wrapped in components.
 
 Control-flow monads (such as Maybe or List) can be implemented for use in "for" statements.  So
 can any other kind of monad other than IO, but the built-in support for stateful effects through
@@ -39,16 +64,14 @@ being after-thoughts:
 - API contracts and testing.
 - Publishing, versioning, and dependency management.
 - Open-source license management.
-- Searching for components and functions that work in a particular context
-  (think "Hoogle on steroids").
+- Searching for components and functions that work in a particular context.
 - Human-readable data (all types have readable JSON representations).
 - Development-mode capture and playback of component and function inputs and outputs.
-- Suitability for long-term IDE and debugger development.
+- Built-in tracing and debugging integrated with API contracts.
 
 The medium-term goal of Staq (but if I do all the development myself, this will be around 2015)
-is to choose a useful niche for non-programmers to graphically assemble components and for
-casual programmers to write simple code. The idea is to have a compellingly easy environment
-for building a certain kind of application.
+is to be a high-productivity environment for building simple viral social applications that 
+run in HTML/JavaScript environments (both desktop and mobile).
 
 The longer-term goal of Staq is to become a popular platform for developers who want to build
 systems with sturdy foundations and with easy fine-grain code-sharing. The theory is that the
