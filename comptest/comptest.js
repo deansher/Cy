@@ -1,7 +1,7 @@
 var mocha = require ('mocha')
 var comptest = require('__staq/staq/test/comptest/0.0.1')
 
-describe('Staq compiler output', function(){
+describe('Staque compiler output', function(){
   
   describe('generated module', function(){
     it('should have __staq_source_md5', function(){
