@@ -1,15 +1,17 @@
 Staq
 ====
-The first software development platform designed from the ground up for "social synergy" --
-achieving a strong network effect that amplifies the contributions of individual developers.
+
+A language and platform designed from the ground up for Learnable Programming (as envisioned by Bret
+Victor) and for "social synergy" -- achieving a strong network effect that amplifies the
+contributions of individual developers.
 
 Staq aspires to preserve the beauty of Haskell, but in a simpler and more approachable way.  Staq
 is a "low Haskell" world where the functions are pure, the statements have effects, and the monads
 live in "for" statements.
 
-Staq compiles to JavaScript, the winner in the write-once-run-everywhere war.
+It compiles to JavaScript, the winner in the write-once-run-everywhere war.
 
-Staq was created by Dean Thompson.
+It was created by Dean Thompson.
 
 
 Achieving Social Synergy
@@ -26,7 +28,7 @@ Staq is driving by the belief that the following ingredients are essential to so
 
 - Social, code management, and debugging facilities inherent in the platform.
 
-One reasonable way of looking at Staq to see it as language and platform that are driven from the
+One reasonable way of looking at Staq to see it as a language and platform that are driven from the
 ground up by the goal of realizing Bret Victor's vision of Learnable Programming.  Staq is also inspired
 partly by Chris Granger's [Light Table](http://www.chris-granger.com/2012/04/12/light-table---a-new-ide-concept/)
 project, but with a belief that a new language and platform are necessary to realize the full
@@ -34,13 +36,13 @@ potential of that direction.
 
 Staq's IDE will apply Bret's ideas about "creating by reacting" and "recomposition" by having the
 IDE automatically pull in open-source code examples that meet the developer's needs, much as chess
-software pulls in examples of public games that proceeded from the current position.  Staq even
-generates potential code to meet the developer's needs, much as chess software shows potential lines
-of play and their likely outcomes.For example, when the developer starts writing a signature and
-contract for a function, the IDE will suggest existing functions in open-source code that have that
-signature and meet that contract.  It will decorate each suggested function with its quality score
-and the developer's reputation and achievement scores.  The intended feel is much like how chess
-software shows potential lines of play with their statistics.
+software pulls in examples of public games that proceeded from the current position.  The Staq IDE
+will even generate potential code to meet the developer's needs, much as chess software shows
+potential lines of play and their likely outcomes.  For example, when the developer starts writing a
+signature and contract for a function, the IDE will suggest existing functions in open-source code
+that have that signature and meet that contract.  It will decorate each suggested function with its
+quality score and the developer's reputation and achievement scores.  The intended feel is much like
+how chess software shows potential lines of play with their statistics.
 
 The IDE will even suggest implementations of the function which combine small numbers of existing
 functions to meet that signature and contract.  The developer can browse across to examples in
@@ -73,11 +75,8 @@ The medium-term goal of Staq (but if I do all the development myself, this will 
 is to be a high-productivity environment for building simple viral social applications that 
 run in HTML/JavaScript environments (both desktop and mobile).
 
-The longer-term goal of Staq is to become a popular platform for developers who want to build
-systems with sturdy foundations and with easy fine-grain code-sharing. The theory is that the
-platform features listed above, plus an IDE and debugger that strongly leverage those 
-features, would create an insanely high-productivity development environment. Obviously, 
-there is a lot to be decided and proven along that long path!
+The longer-term goal of Staq is to be a fun and insanely-high-productivity environment for general 
+programming.
 
 In the ultra-long-term, this is an AI project.  That is so far in the future that there's no reason
 to tell the full story (ask me if you are actually interested), but the basic outline is easy:
@@ -211,9 +210,12 @@ the major issues:
 
 License
 -------
+
 All files in this project (whether so marked or not) are Copyright (c) Dean Thompson and
 subject to the Apache 2 license: http://www.apache.org/licenses/LICENSE-2.0.html
 
 Documentation
 -------------
-See the notes directory for a rough pile of info.  Also see the staq directory for examples.
+
+See the doc and notes directories for documentation work-in-progress.  Also see the staq directory
+for examples.
