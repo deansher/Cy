@@ -105,6 +105,14 @@ parseStaq sourceCode originName production = runIdentity $ runGIPT production ()
 
 type Parser a = IndentParsecT Text () Identity a
 
+moduleDecl :: Parser ModuleDecl
+moduleDecl = do
+  (mid, props) <- (topModuleHeader <|> subModuleHeader)
+  exports <- possibleExportStatement
+  imports <- importStatements
+  decls <- topLevelDecls
+  return $! ModuleDecl mid props exports imports decls
+
 topModuleHeader :: Parser (ModuleId, ModuleProperties)
 topModuleHeader = do
   kwPackage
@@ -118,14 +126,6 @@ subModuleHeader = do
   kwModule
   mid <- subModuleId
   return $! (mid, SubModuleProperties pub)
-
-moduleDecl :: Parser ModuleDecl
-moduleDecl = do
-  (mid, props) <- (topModuleHeader <|> subModuleHeader)
-  exports <- possibleExportStatement
-  imports <- importStatements
-  decls <- topLevelDecls
-  return $! ModuleDecl mid props exports imports decls
 
 topModuleId :: Parser ModuleId
 topModuleId = do
@@ -168,7 +168,7 @@ userPlusDomainName = do
   return $! user ++ "+" ++ domain
 
 legalDomainLabelFirstChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
-legalDomainLabelSubsequentChars = '-' : legalDomainLabelSubsequentChars
+legalDomainLabelSubsequentChars = '-' : legalDomainLabelFirstChars
 
 legalUserNameFirstChars = '.' : legalDomainLabelSubsequentChars
 legalUserNameSubsequentChars = '-' : legalUserNameFirstChars
@@ -257,40 +257,49 @@ instance RandomFormattable ModuleDecl where
                   TopModuleName -> True
                   _             -> False
 
-    header <- if isTop then randomFormatTopModuleHeader decl
-                       else randomFormatSubModuleHeader decl
+    header <- if isTop then randomFormatTopModuleHeader indent decl
+                       else randomFormatSubModuleHeader indent decl
 
-    exports <- randomFormatExports $ moduleExports decl
-    imports <- randomFormatImports $ moduleImports decl
-    decls <- randomFormatTopLevelDecls $ moduleDecls decl
+    exports <- randomFormatExports indent $ moduleExports decl
+    imports <- randomFormatImports indent $ moduleImports decl
+    decls <- randomFormatTopLevelDecls indent $ moduleDecls decl
 
     return $! header ++ exports ++ imports ++ decls
 
-randomFormatTopModuleHeader :: ModuleDecl -> Gen String
-randomFormatTopModuleHeader decl = return ""
+randomFormatTopModuleHeader :: Int -> ModuleDecl -> Gen String
+randomFormatTopModuleHeader indent decl = do
+  white1 <- randomHorizontalWhitespace
+  mid <- randomFormat indent $ moduleId decl
+  white2 <- randomHorizontalWhitespace
+  let version = formatVersionNumber $ modpropVersion $ moduleProperties decl
+  return $! "package" ++ white1 ++ mid ++ white2 ++ version
 
-randomFormatSubModuleHeader :: ModuleDecl -> Gen String
-randomFormatSubModuleHeader decl = return ""
+randomFormatSubModuleHeader :: Int -> ModuleDecl -> Gen String
+randomFormatSubModuleHeader indent decl = return ""
 
-randomFormatExports :: Seq ModuleExport -> Gen String
-randomFormatExports exports = return ""
+randomFormatExports :: Int -> Seq ModuleExport -> Gen String
+randomFormatExports indent exports = return ""
 
-randomFormatImports :: Seq ModuleImport -> Gen String
-randomFormatImports exports = return ""
+randomFormatImports :: Int -> Seq ModuleImport -> Gen String
+randomFormatImports ident exports = return ""
 
-randomFormatTopLevelDecls :: Seq TopLevelDecl -> Gen String
-randomFormatTopLevelDecls decls = return ""
+randomFormatTopLevelDecls :: Int -> Seq TopLevelDecl -> Gen String
+randomFormatTopLevelDecls indent decls = return ""
+
+instance RandomFormattable ModuleId where
+  randomFormat indent mid = do
+    let org = formatOrgName $ midOrgName mid
+        pkg = formatPackageName $ midPackageName mid
+        mod_suffix = case midModuleName mid of
+                       TopModuleName -> ""
+                       SubModuleName ident -> "/" ++ formatIdentifier ident
+    return $! org ++ "/" ++ pkg ++ mod_suffix
 
 instance RandomFormattable Identifier where
   randomFormat indent (Identifier name) = return $! Text.unpack name
 
-instance RandomFormattable VersionNumber where
-  randomFormat ident v =
-    return $! displayVersionNumber v
-
-{- Given @indent@ and @xs@, randomly fold the @xs@ across lines while maintaining at least indent
-   level @indent@.  Each @x@ formatted after either some horizontal whitespace or a random line.
- -}
+-- | Given @indent@ and @xs@, randomly fold the @xs@ across lines while maintaining at least indent
+-- level @indent@.  Each @x@ formatted after either some horizontal whitespace or a random line.
 randomFold :: (RandomFormattable a) => Int -> [a] -> Gen String
 randomFold indent xs = concat <$> mapM (randomFormatAndFold indent) xs
 
@@ -299,15 +308,17 @@ randomFormatAndFold indent x = do
   s <- randomFormat indent x
   randomFold1 indent s
 
-{- Given @indent@, @xs@, and @sep@, randomly fold the @xs@ across lines in the manner of @randomFold@, but
-   separated by @sep@.
- -}
+-- | Given @indent@, @xs@, and @sep@, randomly fold the @xs@ across lines in the manner of @'randomFold'@, but
+-- separated by @sep@.
 randomFoldSepBy :: (RandomFormattable a) => Int -> [a] -> String -> Gen String
 randomFoldSepBy indent xs sep = do
   fs <- forM xs $ \x -> randomFormat indent x
   let ss = intersperse sep fs
   concat <$> mapM (randomFold1 indent) ss
 
+-- | Given @indent@ and @s@, generate a random fold of @s@ that can be appended to the current
+-- code output.  @s@ will be preceded by either random horizontal whitespace or newlines plus
+-- indentation back to at greater than @indent@.
 randomFold1 :: Int -> String -> Gen String
 randomFold1 indent s = do
   n <- choose(1, 4) :: Gen Int
@@ -410,4 +421,9 @@ prop_correctlyParsesRandomlyFormattedCode mod = do
                                                 "Parsed as: " ++ show mod' ++ "\n\n" ++
                                                 "Formatted as:" ++ "\n\n" ++ formatted) False
 
-runTests = quickCheckWith (stdArgs { maxSuccess=1000, chatty=False }) prop_correctlyParsesRandomlyFormattedCode
+runTests = quickCheckWith (stdArgs { maxSuccess=1000 }) prop_correctlyParsesRandomlyFormattedCode
+
+randomCode :: IO String
+randomCode = do
+   md <- head <$> sample' (arbitrary :: Gen ModuleDecl)
+   head <$> sample' (randomFormat 0 md)

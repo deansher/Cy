@@ -15,14 +15,17 @@ module Staq.Language (
   , ModuleId(..)
   , ModuleProperties(..)
   , OrgName(..)
+  , formatOrgName
   , PackageName(..)
+  , formatPackageName
   , ModuleName(..)
   , ModuleExport(..)
   , ModuleImport(..)
   , TopLevelDecl(..)
   , Identifier(..)
+  , formatIdentifier
   , VersionNumber(..)
-  , displayVersionNumber
+  , formatVersionNumber
 ) where
 
 import Control.Monad (replicateM)
@@ -37,6 +40,8 @@ import Data.List (intercalate)
 
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
+
+import Data.Foldable (toList)
 
 import Test.QuickCheck
 
@@ -54,6 +59,8 @@ data ModuleId = ModuleId {
   , midModuleName :: !ModuleName
 } deriving (Eq, Show, Read)
 
+midTopLevel mid = moduleNameTopLevel $ midModuleName mid
+
 data ModuleProperties = TopModuleProperties {
     modpropVersion :: !VersionNumber
 } | SubModuleProperties {
@@ -63,17 +70,27 @@ data ModuleProperties = TopModuleProperties {
 data OrgName = OrgName !Text
   deriving (Eq, Show, Read)
 
+formatOrgName (OrgName name) = Text.unpack name
+
 data PackageName = PackageName !(Seq Identifier)
   deriving (Eq, Show, Read)
 
+formatPackageName (PackageName idents) =
+  intercalate "/" $ map formatIdentifier $ toList idents
+
 data ModuleName = TopModuleName | SubModuleName !Identifier
   deriving (Eq, Show, Read)
+
+moduleNameTopLevel TopModuleName = True
+moduleNameTopLevel (SubModuleName _) = False
 
 data TopLevelDecl = TopLevelDecl
   deriving (Eq, Read, Show)
 
 data Identifier = Identifier !Text
   deriving (Eq, Read, Show)
+
+formatIdentifier (Identifier name) = Text.unpack name
 
 data ModuleExport = ModuleExport {
     exportIdentifier :: !Identifier
@@ -89,7 +106,7 @@ data ModuleImport = ModuleImport {
 data VersionNumber = VersionNumber !Int !Int !Int !Text
   deriving (Eq, Read, Show)
 
-displayVersionNumber (VersionNumber x y z build) =
+formatVersionNumber (VersionNumber x y z build) =
   show x ++ "." ++ show y ++ "." ++ show z ++ "-" ++ Text.unpack build
 
 ----------------------
@@ -98,7 +115,7 @@ displayVersionNumber (VersionNumber x y z build) =
 instance Arbitrary ModuleDecl where
   arbitrary = do
     mid <- arbitrary :: Gen ModuleId
-    props <- arbitrary :: Gen ModuleProperties
+    props <- genModuleProperties $ midTopLevel mid
     nexp <- choose(0, 3) :: Gen Int
     exports <- vectorOf nexp arbitrary :: Gen [ModuleExport]
     nimp <- choose(0, 3) :: Gen Int
@@ -114,9 +131,8 @@ instance Arbitrary ModuleId where
     name <- arbitrary :: Gen ModuleName
     return $! ModuleId org pkg name
 
-instance Arbitrary ModuleProperties where
-  arbitrary = do
-    top <- arbitrary :: Gen Bool
+genModuleProperties :: Bool -> Gen ModuleProperties
+genModuleProperties top = do
     if top then do
       ver <- arbitrary :: Gen VersionNumber
       return $! TopModuleProperties ver
