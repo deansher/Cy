@@ -2,7 +2,7 @@ Cy
 ==
 
 A language and platform designed from the ground up for Learnable Programming (as envisioned by Bret
-Victor) and for "social synergy" -- achieving a strong network effect that amplifies the
+Victor) and for "coding synergy" -- achieving a strong network effect that amplifies the
 contributions of individual developers.
 
 Cy aspires to preserve the beauty of Haskell, but in a simpler and more approachable way.
@@ -14,10 +14,10 @@ It compiles to JavaScript, the winner in the write-once-run-everywhere war.
 It was created by Dean Thompson.
 
 
-Achieving Social Synergy
+Achieving Coding Synergy
 ------------------------
 
-Cy is driving by the belief that the following ingredients are essential to social synergy:
+Cy is driving by the belief that the following ingredients are essential to coding synergy:
 
 - [Learnable Programming](http://worrydream.com/LearnableProgramming/), as envisioned by Bret
   Victor.  

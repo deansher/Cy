@@ -1,5 +1,5 @@
 Cy Dependency Management
-============================
+========================
 
 Each Cy package has a version number, with the semantics defined at http://semver.org/ (v2.0.0-rc.1).
 The version number is declared in the `package` statement at the top of the package definition file.

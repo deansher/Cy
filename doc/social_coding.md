@@ -1,5 +1,5 @@
-Social Coding in Cy
-=======================
+The Social Side of Coding Synergy in Cy
+=======================================
 
 A Cy account is typically tied to a Github account and a LinkedIn account.
 

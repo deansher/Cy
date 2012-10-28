@@ -1,5 +1,5 @@
 Cy Source Structure
-=======================
+===================
 
 Cy source code is organized hierarchically into organizations, packages, and modules.
 

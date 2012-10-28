@@ -1,5 +1,5 @@
 Cy Configuration
-====================
+================
 
 From the standpoint of a component's code, the component always starts out with the same constant
 internal state.  However, the first message that a component processes is always the "init" input of

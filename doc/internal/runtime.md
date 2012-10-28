@@ -1,5 +1,5 @@
 Cy Runtime
-==============
+==========
 
 Cy compiles to two different JavaScript environments: Node.js or browser.
 
@@ -45,7 +45,7 @@ browser, in the rest of this document.
 
 
 JavaScript Representation of Simple Cy Types
-------------------------------------------------
+--------------------------------------------
 
 Cy String -> string
 
@@ -53,8 +53,8 @@ all Cy numeric types -> number
 
 
 JavaScript Representation of Cy Object
-------------------------------------------
+--------------------------------------
 
 
 JavaScript Representation of Cy Component
----------------------------------------------
+-----------------------------------------
