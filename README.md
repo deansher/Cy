@@ -1,12 +1,12 @@
-Staque
-======
+Cy
+==
 
 A language and platform designed from the ground up for Learnable Programming (as envisioned by Bret
 Victor) and for "social synergy" -- achieving a strong network effect that amplifies the
 contributions of individual developers.
 
-Staque aspires to preserve the beauty of Haskell, but in a simpler and more approachable way.
-Staque is a "low Haskell" world where the functions are pure, the statements have effects, and the
+Cy aspires to preserve the beauty of Haskell, but in a simpler and more approachable way.
+Cy is a "low Haskell" world where the functions are pure, the statements have effects, and the
 monads live in "for" statements.
 
 It compiles to JavaScript, the winner in the write-once-run-everywhere war.
@@ -17,26 +17,26 @@ It was created by Dean Thompson.
 Achieving Social Synergy
 ------------------------
 
-Staque is driving by the belief that the following ingredients are essential to social synergy:
+Cy is driving by the belief that the following ingredients are essential to social synergy:
 
 - [Learnable Programming](http://worrydream.com/LearnableProgramming/), as envisioned by Bret
   Victor.  
 
 - "Stackable abstractions" -- abstractions that can be composed and layered while maintaining a
-  clear, concise behavioral contract.  The basic building blocks of Staque (pure functions and actors)
+  clear, concise behavioral contract.  The basic building blocks of Cy (pure functions and actors)
   are chosen to be easily and accurately composable and highly testable.
 
 - Social, code management, and debugging facilities inherent in the platform.
 
-One reasonable way of looking at Staque is to see it as a language and platform that are driven from
-the ground up by the goal of realizing Bret Victor's vision of Learnable Programming.  Staque is
+One reasonable way of looking at Cy is to see it as a language and platform that are driven from
+the ground up by the goal of realizing Bret Victor's vision of Learnable Programming.  Cy is
 also inspired partly by Chris Granger's [Light Table](http://www.chris-granger.com/2012/04/12/light-table---a-new-ide-concept/) 
 project, but with a belief that a new language and platform are necessary to realize the full
 potential of that direction.
 
-Staque's IDE will apply Bret's ideas about "creating by reacting" and "recomposition" by having the
+Cy's IDE will apply Bret's ideas about "creating by reacting" and "recomposition" by having the
 IDE automatically pull in open-source code examples that meet the developer's needs, much as chess
-software pulls in examples of public games that proceeded from the current position.  The Staque IDE
+software pulls in examples of public games that proceeded from the current position.  The Cy IDE
 will even generate potential code to meet the developer's needs, much as chess software shows
 potential lines of play and their likely outcomes.  For example, when the developer starts writing a
 signature and contract for a function, the IDE will suggest existing functions in open-source code
@@ -50,11 +50,11 @@ public source code that have combined those functions in that way.  The intended
 like how chess software shows references to published games which have proceeded from the current
 board position or from a potential line of play.
 
-From a linguistic perspective, Staque aspires to preserve the beauty of Haskell, but in a simpler and
+From a linguistic perspective, Cy aspires to preserve the beauty of Haskell, but in a simpler and
 more approachable way.  Essentially, every function implicitly runs in an ST monad (Haskell's "state
 transformer"), with language support for vars (variables) in that monad.  Instead of the IO monad,
 real-world effects are implemented as actors called "components".  Primitive IO operations are
-implemented underneath the Staque platform (in JavaScript) and wrapped in components.
+implemented underneath the Cy platform (in JavaScript) and wrapped in components.
 
 Control-flow monads (such as Maybe or List) can be implemented for use in "for" statements.  So
 can any other kind of monad other than IO, but the built-in support for stateful effects through
@@ -71,11 +71,11 @@ being after-thoughts:
 - Development-mode capture and playback of component and function inputs and outputs.
 - Built-in tracing and debugging integrated with API contracts.
 
-The medium-term goal of Staque (but if I do all the development myself, this will be around 2015)
+The medium-term goal of Cy (but if I do all the development myself, this will be around 2015)
 is to be a high-productivity environment for building simple viral social applications that 
 run in HTML/JavaScript environments (both desktop and mobile).
 
-The longer-term goal of Staque is to be a fun and insanely-high-productivity environment for general 
+The longer-term goal of Cy is to be a fun and insanely-high-productivity environment for general 
 programming.
 
 In the ultra-long-term, this is an AI project.  That is so far in the future that there's no reason
@@ -85,14 +85,14 @@ useful behaviors. If we get better and better at suggesting the best component o
 human programmer to use in a particular context, then we also get better and better at knowing the
 densest regions of useful algorithmic behavior for automatic exploration. Anyway, it is a fine line
 between the valuable emergent complexity of a large number of smoothly collaborating human
-programmers and the added benefit of automatic algorithm discovery in some areas. Staque starts
+programmers and the added benefit of automatic algorithm discovery in some areas. Cy starts
 with the former and aspires to the latter.
 
 
 Object Model
 ------------
-Unlike Haskell, Staque does have a notion of objects, which borrows lightly from the OO world.
-However, Staque's notion of an object is extremely simple.  It is mostly light syntactic sugar
+Unlike Haskell, Cy does have a notion of objects, which borrows lightly from the OO world.
+However, Cy's notion of an object is extremely simple.  It is mostly light syntactic sugar
 over a Haskell-like functional model.
 
 There is no subclassing or inheritance. This is to avoid the complexity of covariance, type
@@ -169,8 +169,8 @@ so complex that it is never fully understood, much less written down.
 Some of this complexity is unavoidable.  Systems need configuration values, which change their
 behavior.  Operations take time, and sometimes they fail.  And so on.
 
-Staque attempts to tame this complexity by providing a simple set of stackable primitives, and by
-supporting a style of development that keeps the abstractions stackable. Here is how Staque deals with
+Cy attempts to tame this complexity by providing a simple set of stackable primitives, and by
+supporting a style of development that keeps the abstractions stackable. Here is how Cy deals with
 the major issues:
 
 - Functions are pure, meaning that they have no side effects. This includes not blocking and not
@@ -188,7 +188,7 @@ the major issues:
   internal initial state before invoking its "init" message handler.)
 
 - The actions (event handler executions) within a component are serialized with respect to each
-  other.  For a component implemented in Staque, this is done by treating the component's vars as STM
+  other.  For a component implemented in Cy, this is done by treating the component's vars as STM
   (Software Transactional Memory) variables. For a component implemented partly in JavaScript, this
   is required by convention.  Component actions are triggered by input events, replies from other
   components, and by these same occurrences when a component communicates with itself via internal
@@ -200,12 +200,12 @@ the major issues:
   its sequence of inbound and outbound messages.
 
 - Execution never blocks within a function or an action. The flow of messages between actions
-  (within and across components) is modeled as asynchronous events.  Staque's philosophy is that,
+  (within and across components) is modeled as asynchronous events.  Cy's philosophy is that,
   although a synchronous model (where threads block on IO, RPCs, etc.) is superficially more
   convenient, it is such an unsupportable lie that it causes more trouble than it is worth.
-  Instead, Staque focuses on making asynchrony as convenient and natural as possible.
+  Instead, Cy focuses on making asynchrony as convenient and natural as possible.
 
-- Staque provides built-in support for specifying and validating contracts at both the function
+- Cy provides built-in support for specifying and validating contracts at both the function
   level and the component level.
 
 License
@@ -217,5 +217,5 @@ subject to the Apache 2 license: http://www.apache.org/licenses/LICENSE-2.0.html
 Documentation
 -------------
 
-See the doc and notes directories for documentation work-in-progress.  Also see the staq directory
+See the doc and notes directories for documentation work-in-progress.  Also see the cy directory
 for examples.

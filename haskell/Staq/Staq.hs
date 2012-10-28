@@ -1,2 +1,2 @@
-module Staq (
+module Cy (
 ) where

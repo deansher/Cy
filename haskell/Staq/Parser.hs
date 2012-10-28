@@ -10,11 +10,11 @@
 {-# LANGUAGE FlexibleInstances, BangPatterns, OverloadedStrings #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
-module Staq.Parser (
+module Cy.Parser (
   parseModule
 ) where
 
-import Staq.Language
+import Cy.Language
 
 import Data.List (intercalate, intersperse, isPrefixOf, isSuffixOf)
 
@@ -98,10 +98,10 @@ opPlus = IT.reservedOp tokP "+"
 opSlash = IT.reservedOp tokP "/"
 
 parseModule :: Text -> String -> Either ParseError ModuleDecl
-parseModule sourceCode originName = parseStaq sourceCode originName moduleDecl
+parseModule sourceCode originName = parseCy sourceCode originName moduleDecl
 
-parseStaq :: Text -> String -> Parser a -> Either ParseError a
-parseStaq sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
+parseCy :: Text -> String -> Parser a -> Either ParseError a
+parseCy sourceCode originName production = runIdentity $ runGIPT production () originName sourceCode
 
 type Parser a = IndentParsecT Text () Identity a
 

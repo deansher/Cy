@@ -10,7 +10,7 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
-module Staq.Language (
+module Cy.Language (
     ModuleDecl(..)
   , ModuleId(..)
   , ModuleProperties(..)

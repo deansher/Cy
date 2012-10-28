@@ -1,4 +1,4 @@
-module staq.us/lang:io
+module cy-platform.org/lang:io
 
 export (NodeStdio, LineIo)
 

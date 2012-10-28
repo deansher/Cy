@@ -1,4 +1,4 @@
-public module staq.us/examples/chat:mockclient
+public module cy-platform.org/examples/chat:mockclient
 
 export (NodeMockClientSystem)
 
@@ -107,7 +107,7 @@ type UnknownCommand = object
 
 type ChatHistory = object
   -- It would make more sense in this case to give elements an initial value, but instead
-  -- we leave it blank to explore Staq's constructor syntax.
+  -- we leave it blank to explore Cy's constructor syntax.
   private elements :: [HistoryElement]
 
   -- A constructor is invoked like a regular function. Internally, it is like a method, except
@@ -156,7 +156,7 @@ interface PrettyPrintable a where
 implementation PrettyPrintable ChatHistory
 
 -- There is quite a bit of silliness in the HistoryElement class to explore the boundaries
--- of Staq's object model.
+-- of Cy's object model.
 
 type HistoryElement = alternatives
     Interaction
