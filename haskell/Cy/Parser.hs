@@ -30,9 +30,12 @@ import Data.String (fromString)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
 
+import Data.Foldable (toList)
+
 import qualified Data.Strict.Maybe as SM
 
 import Text.Parsec
+import Text.Parsec.Combinator (eof)
 import Text.Parsec.Prim
 import Text.Parsec.Token (makeTokenParser, GenTokenParser, GenLanguageDef(..))
 import Text.Parsec.Text () -- We just need the Stream instance declaration for Text
@@ -50,10 +53,10 @@ langDef :: GenLanguageDef Text () HaskellLikeIndent
 langDef = LanguageDef { commentStart = "{-"
                       , commentEnd   = "-}"
                       , commentLine  = "--"
-                      , identStart = letter <|> char '_'
-                      , identLetter = alphaNum <|> char '_' <|> char '\''
-                      , opStart = oneOf ".,-+/*=<>;"
-                      , opLetter = oneOf ".,-+/*=<>;"
+                      , identStart = oneOf legalIdentifierFirstChars
+                      , identLetter = oneOf legalIdentifierSubsequentChars
+                      , opStart = oneOf legalOperatorFirstChars
+                      , opLetter = oneOf legalOperatorSubsequentChars
                       
                       -- Check these for completeness periodically.
                       
@@ -107,10 +110,12 @@ type Parser a = IndentParsecT Text () Identity a
 
 moduleDecl :: Parser ModuleDecl
 moduleDecl = do
-  (mid, props) <- (topModuleHeader <|> subModuleHeader)
+  whiteSpace
+  (mid, props) <- (try topModuleHeader <|> subModuleHeader)
   exports <- possibleExportStatement
   imports <- importStatements
   decls <- topLevelDecls
+  eof
   return $! ModuleDecl mid props exports imports decls
 
 topModuleHeader :: Parser (ModuleId, ModuleProperties)
@@ -153,25 +158,19 @@ moduleOrgAndPackage = do
   return $! (org, pkg)
 
 publicOrPrivate :: Parser Bool
-publicOrPrivate = (kwPublic >> return True) <|> (kwPrivate >> return False)
+publicOrPrivate = (try kwPublic >> return True) <|> (try kwPrivate >> return False)
 
 orgName :: Parser OrgName
 orgName = do
-  name <- (try userPlusDomainName <|> domainName)
+  name <- (try domainPlusUser <|> domainName)
   return $! OrgName $ fromString name
 
-userPlusDomainName :: Parser String
-userPlusDomainName = do
-  user <- userName
-  opPlus
+domainPlusUser :: Parser String
+domainPlusUser = do
   domain <- domainName
-  return $! user ++ "+" ++ domain
-
-legalDomainLabelFirstChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
-legalDomainLabelSubsequentChars = '-' : legalDomainLabelFirstChars
-
-legalUserNameFirstChars = '.' : legalDomainLabelSubsequentChars
-legalUserNameSubsequentChars = '-' : legalUserNameFirstChars
+  opPlus
+  user <- userName
+  return $! domain ++ "+" ++ user
 
 userName :: Parser String
 userName = do
@@ -253,7 +252,9 @@ class RandomFormattable a where
 
 instance RandomFormattable ModuleDecl where
   randomFormat indent decl = do
-    let isTop = case midModuleName $ moduleId decl of
+
+    let indentation = replicate indent ' '
+        isTop = case midModuleName $ moduleId decl of
                   TopModuleName -> True
                   _             -> False
 
@@ -264,24 +265,60 @@ instance RandomFormattable ModuleDecl where
     imports <- randomFormatImports indent $ moduleImports decl
     decls <- randomFormatTopLevelDecls indent $ moduleDecls decl
 
-    return $! header ++ exports ++ imports ++ decls
+    return $! indentation ++ header ++ exports ++ imports ++ decls
 
 randomFormatTopModuleHeader :: Int -> ModuleDecl -> Gen String
 randomFormatTopModuleHeader indent decl = do
+  let indentation = replicate indent ' '
   white1 <- randomHorizontalWhitespace
   mid <- randomFormat indent $ moduleId decl
   white2 <- randomHorizontalWhitespace
   let version = formatVersionNumber $ modpropVersion $ moduleProperties decl
-  return $! "package" ++ white1 ++ mid ++ white2 ++ version
+  le <- randomLineEnding
+  return $! indentation ++ "package" ++ white1 ++ mid ++ white2 ++ version ++ le
 
 randomFormatSubModuleHeader :: Int -> ModuleDecl -> Gen String
-randomFormatSubModuleHeader indent decl = return ""
+randomFormatSubModuleHeader indent decl = do
+  let indentation = replicate indent ' '
+      publicOrPrivate = if modpropPublic $ moduleProperties decl
+                        then "public"
+                        else "private"
+  white1 <- randomHorizontalWhitespace
+  white2 <- randomHorizontalWhitespace
+  mid <- randomFormat indent $ moduleId decl
+  le <- randomLineEnding
+  return $! indentation ++ publicOrPrivate ++ white1 ++ "module" ++ white2 ++ mid ++ le
 
 randomFormatExports :: Int -> Seq ModuleExport -> Gen String
-randomFormatExports indent exports = return ""
+randomFormatExports indent exports = do
+  let indentation = replicate indent ' '
+  white1 <- randomHorizontalWhitespace
+  exportList <- randomFoldSepBy indent (map exportIdentifier $ toList exports) ","
+  le <- randomLineEnding
+  return $! indentation ++ "export" ++ white1 ++ "(" ++ exportList ++ ")" ++ le
 
 randomFormatImports :: Int -> Seq ModuleImport -> Gen String
-randomFormatImports ident exports = return ""
+randomFormatImports indent imports = concat <$> mapM (randomFormatImport indent) (toList imports)
+
+randomFormatImport :: Int -> ModuleImport -> Gen String
+randomFormatImport indent imp = do
+  let indentation = replicate indent ' '
+  w <- forM [0..5] $ \i -> randomHorizontalWhitespace
+  let wh n = w !! n
+  let (qualifiedStr, asStr) = case importQualifier imp of
+                                SM.Just ident -> ("qualified" ++ wh 0
+                                                 , wh 1 ++ "as" ++ wh 2 ++ formatIdentifier ident)
+                                SM.Nothing -> ("", "")
+  midStr <- randomFormat indent (importModuleId imp)
+  let idents = importIdentifiers imp
+  identList <- if Seq.null idents
+               then return ""
+               else do
+                 list <- randomFoldSepBy indent (toList idents) ","
+                 return $! "(" ++ list ++ ")"
+  le <- randomLineEnding
+  return $! indentation ++ "import" ++ wh 3 ++ qualifiedStr ++ midStr ++ wh 4
+            ++ asStr ++ wh 5 ++ identList ++ le
 
 randomFormatTopLevelDecls :: Int -> Seq TopLevelDecl -> Gen String
 randomFormatTopLevelDecls indent decls = return ""
@@ -292,8 +329,11 @@ instance RandomFormattable ModuleId where
         pkg = formatPackageName $ midPackageName mid
         mod_suffix = case midModuleName mid of
                        TopModuleName -> ""
-                       SubModuleName ident -> "/" ++ formatIdentifier ident
+                       SubModuleName ident -> ":" ++ formatIdentifier ident
     return $! org ++ "/" ++ pkg ++ mod_suffix
+
+instance RandomFormattable ModuleExport where
+  randomFormat indent (ModuleExport ident) = randomFormat indent ident
 
 instance RandomFormattable Identifier where
   randomFormat indent (Identifier name) = return $! Text.unpack name
@@ -357,7 +397,9 @@ randomLineEnding = do
     else if n == 9
            then do
              text <- randomTextAvoiding ["\n"]
-             return $! spaces ++ "--" ++ text ++ "\n"
+             -- TODO: Be more sophisticated about when the space before is mandatory
+             -- (to separate the comment start from an operator).
+             return $! spaces ++ " --" ++ text ++ "\n"
            else do
              le <- randomLineEnding
              comment <- randomNestedComment
@@ -417,8 +459,7 @@ prop_correctlyParsesRandomlyFormattedCode mod = do
               Left e     -> printTestCase (show e ++ "\n\n" ++ formatted) False
               Right mod' -> if mod' == mod
                             then property True
-                            else printTestCase ("Original:  " ++ show mod ++ "\n\n" ++
-                                                "Parsed as: " ++ show mod' ++ "\n\n" ++
+                            else printTestCase ("Parsed as: " ++ show mod' ++ "\n\n" ++
                                                 "Formatted as:" ++ "\n\n" ++ formatted) False
 
 runTests = quickCheckWith (stdArgs { maxSuccess=1000 }) prop_correctlyParsesRandomlyFormattedCode

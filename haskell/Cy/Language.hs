@@ -15,6 +15,14 @@ module Cy.Language (
   , ModuleId(..)
   , ModuleProperties(..)
   , OrgName(..)
+  , legalDomainLabelFirstChars
+  , legalDomainLabelSubsequentChars
+  , legalUserNameFirstChars
+  , legalUserNameSubsequentChars
+  , legalIdentifierFirstChars
+  , legalIdentifierSubsequentChars
+  , legalOperatorFirstChars
+  , legalOperatorSubsequentChars
   , formatOrgName
   , PackageName(..)
   , formatPackageName
@@ -120,8 +128,9 @@ instance Arbitrary ModuleDecl where
     exports <- vectorOf nexp arbitrary :: Gen [ModuleExport]
     nimp <- choose(0, 3) :: Gen Int
     imports <- vectorOf nimp arbitrary :: Gen [ModuleImport]
-    len <- choose(1, 5) :: Gen Int
-    decls <- vectorOf len arbitrary :: Gen [TopLevelDecl]
+    -- len <- choose(1, 5) :: Gen Int
+    -- decls <- vectorOf len arbitrary :: Gen [TopLevelDecl]
+    let decls = []
     return $! ModuleDecl mid props (Seq.fromList exports) (Seq.fromList imports) (Seq.fromList decls)
 
 instance Arbitrary ModuleId where
@@ -140,17 +149,27 @@ genModuleProperties top = do
       pub <- arbitrary :: Gen Bool
       return $! SubModuleProperties pub
 
+legalDomainLabelFirstChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
+legalDomainLabelSubsequentChars = '-' : legalDomainLabelFirstChars
+
+legalUserNameFirstChars = '_' : legalDomainLabelFirstChars
+legalUserNameSubsequentChars = '.' : legalUserNameFirstChars
+
 instance Arbitrary OrgName where
   arbitrary = do
     len <- choose (1, 3) :: Gen Int
-    ds <- vectorOf len arbitraryIdentifierName
+    ds <- vectorOf len arbitraryDomainLabel
     let domain = intercalate "." ds
     hasUserName <- arbitrary :: Gen Bool
     if hasUserName then do
-      u <- arbitraryIdentifierName
+      u <- arbitraryUserName
       return $! OrgName $ fromString $ domain ++ "+" ++ u
     else do
       return $! OrgName $ fromString $ domain
+
+arbitraryDomainLabel = genIdent 8 legalDomainLabelFirstChars legalDomainLabelSubsequentChars
+
+arbitraryUserName = genIdent 8 legalUserNameFirstChars legalUserNameSubsequentChars
 
 instance Arbitrary PackageName where
   arbitrary = do
@@ -183,22 +202,31 @@ instance Arbitrary ModuleImport where
 instance Arbitrary TopLevelDecl where
   arbitrary = return TopLevelDecl
 
-arbitraryIdentifierName :: Gen String
-arbitraryIdentifierName = do
-  Identifier name <- arbitrary
-  return $! Text.unpack name
-
 instance Arbitrary Identifier where
   arbitrary = do 
-    len <- choose (1, 8) :: Gen Int
-    first <- elements $ concat [letters, "_"]
-    rest <- vectorOf (len - 1) $ elements $ concat [letters, digits, "_"]
-    return $! Identifier $ fromString $ first : rest
+    name <- arbitraryIdentifierName
+    return $! Identifier $ fromString $ name
+
+legalIdentifierFirstChars = concat [letters, "_"]
+legalIdentifierSubsequentChars = concat [letters, digits, "_"]
+
+arbitraryIdentifierName :: Gen String
+arbitraryIdentifierName = genIdent 8  legalIdentifierFirstChars legalIdentifierSubsequentChars
+
+genIdent :: Int -> [Char] -> [Char] -> Gen [Char]
+genIdent maxLen legalFirsts legalRests = do
+  len <- choose (1, maxLen) :: Gen Int
+  first <- elements legalFirsts
+  rest <- vectorOf (len - 1) $ elements legalRests
+  return $! first : rest
 
 letters = concat [['a'..'z'], ['A'..'Z']]
 
 digits = ['0'..'9']
   
+legalOperatorFirstChars = ".,-+/*=<>;"
+legalOperatorSubsequentChars = legalOperatorFirstChars
+
 instance Arbitrary VersionNumber where
   arbitrary = do
     x <- choose(0, 2) :: Gen Int
