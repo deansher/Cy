@@ -14,10 +14,31 @@ It compiles to JavaScript, the winner in the write-once-run-everywhere war.
 It was created by Dean Thompson.
 
 
-Achieving Coding Synergy
-------------------------
+Goals
+-----
 
-Cy is driving by the belief that the following ingredients are essential to coding synergy:
+The medium-term goal of Cy (but if Dean does all the development himself, this will be around 2015)
+is to be a high-productivity environment for building simple viral social applications that 
+run in HTML/JavaScript environments (both desktop and mobile).
+
+The longer-term goal of Cy is to be a fun and insanely-high-productivity environment for general 
+programming.
+
+In the ultra-long-term, this is an AI project.  That is so far in the future that there's no reason
+to tell the full story (ask me if you are actually interested), but the basic outline is easy:
+adaptive computation needs a way to efficiently explore a space of algorithms that is dense in
+useful behaviors. If we get better and better at suggesting the best component or function for the
+human programmer to use in a particular context, then we also get better and better at knowing the
+densest regions of useful algorithmic behavior for automatic exploration. Anyway, it is a fine line
+between the valuable emergent complexity of a large number of smoothly collaborating human
+programmers and the added benefit of automatic algorithm discovery in some areas. Cy starts
+with the former and aspires to the latter.
+
+
+Coding Synergy
+--------------
+
+Cy is driven by Dean's belief that the following ingredients are essential to coding synergy:
 
 - [Learnable Programming](http://worrydream.com/LearnableProgramming/), as envisioned by Bret
   Victor.  
@@ -34,34 +55,53 @@ also inspired partly by Chris Granger's [Light Table](http://www.chris-granger.c
 project, but with a belief that a new language and platform are necessary to realize the full
 potential of that direction.
 
-Cy's IDE will apply Bret's ideas about "creating by reacting" and "recomposition" by having the
-IDE automatically pull in open-source code examples that meet the developer's needs, much as chess
+Cy's IDE will apply Bret's ideas about "creating by reacting" and "recomposition" by having the IDE
+automatically pull in open-source code examples that meet the developer's needs, much as chess
 software pulls in examples of public games that proceeded from the current position.  The Cy IDE
 will even generate potential code to meet the developer's needs, much as chess software shows
 potential lines of play and their likely outcomes.  For example, when the developer starts writing a
 signature and contract for a function, the IDE will suggest existing functions in open-source code
-that have that signature and meet that contract.  It will decorate each suggested function with its
-quality score and the developer's reputation and achievement scores.  The intended feel is much like
-how chess software shows potential lines of play with their statistics.
+that have similar signatures contracts.  It will decorate each suggested function with its quality
+score and the developer's reputation and achievement scores.  The intended feel is much like how
+chess software shows potential lines of play with their statistics.
 
 The IDE will even suggest implementations of the function which combine small numbers of existing
-functions to meet that signature and contract.  The developer can browse across to examples in
-public source code that have combined those functions in that way.  The intended feel is much
-like how chess software shows references to published games which have proceeded from the current
-board position or from a potential line of play.
+functions to provide the specified signature and meet the contract.  The developer can navigate
+to examples in public source code that have combined those functions in that way.  The intended feel
+is much like how chess software shows references to published games which have proceeded from the
+current board position or from a potential line of play.
+
+Platform Design
+---------------
 
 From a linguistic perspective, Cy aspires to preserve the beauty of Haskell, but in a simpler and
-more approachable way.  Essentially, every function implicitly runs in an ST monad (Haskell's "state
-transformer"), with language support for vars (variables) in that monad.  Instead of the IO monad,
-real-world effects are implemented as actors called "components".  Primitive IO operations are
-implemented underneath the Cy platform (in JavaScript) and wrapped in components.
+more approachable way.  From a Haskell perspective, every Cy function can be regarded as running in
+an ST monad (Haskell's "state transformer"), with language support for vars (variables) in that
+monad.  Instead of Haskell's IO monad, real-world effects are implemented in Cy as actors called
+"components".  Primitive IO operations are implemented underneath the Cy platform (in JavaScript)
+and wrapped in components.  This approach is motivated by the following reasoning:
+
+- There is great power in pure functions in a typed language.  They are highly composable, have
+  a natural first-pass specification in the function signature, are naturally specified further
+  by contracts, and define a highly searchable space of behaviors (ala Hoogle).
+
+- Programs must also have effects.  Since pure functions can't have effects, this forces a
+  two-layer approach.  Haskell has proven that a two-layer approach can be practical and 
+  beautiful.
+
+- However, Haskell's choice of the upper layer -- monads -- forces the programmer into intense
+  mathematical abstraction that only suits a small minority.
+
+- Since we are required to have at least two layers, we'd like to do as much as possible with
+  just two.  Cy takes the position that the most natural and capable upper layer is actors.
 
 Control-flow monads (such as Maybe or List) can be implemented for use in "for" statements.  So
 can any other kind of monad other than IO, but the built-in support for stateful effects through
 vars and actors makes this less commonly necessary.
 
-Social, code management, and debugging facilities are inherent in the platform instead of 
-being after-thoughts: 
+The design of the Cy platform is also driven by a belief that support for the real-world process of
+developing and maintaining code is just as important as the language itself and deserves the same
+level of design attention from the very beginning:
 
 - API contracts and testing.
 - Publishing, versioning, and dependency management.
@@ -70,23 +110,7 @@ being after-thoughts:
 - Human-readable data (all types have readable JSON representations).
 - Development-mode capture and playback of component and function inputs and outputs.
 - Built-in tracing and debugging integrated with API contracts.
-
-The medium-term goal of Cy (but if I do all the development myself, this will be around 2015)
-is to be a high-productivity environment for building simple viral social applications that 
-run in HTML/JavaScript environments (both desktop and mobile).
-
-The longer-term goal of Cy is to be a fun and insanely-high-productivity environment for general 
-programming.
-
-In the ultra-long-term, this is an AI project.  That is so far in the future that there's no reason
-to tell the full story (ask me if you are actually interested), but the basic outline is easy:
-adaptive computation needs a way to efficiently explore a space of algorithms that is dense in
-useful behaviors. If we get better and better at suggesting the best component or function for the
-human programmer to use in a particular context, then we also get better and better at knowing the
-densest regions of useful algorithmic behavior for automatic exploration. Anyway, it is a fine line
-between the valuable emergent complexity of a large number of smoothly collaborating human
-programmers and the added benefit of automatic algorithm discovery in some areas. Cy starts
-with the former and aspires to the latter.
+- Production deployment.
 
 
 Object Model
