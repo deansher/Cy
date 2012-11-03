@@ -47,7 +47,8 @@ Cy is driven by Dean's belief that the following ingredients are essential to co
   clear, concise behavioral contract.  The basic building blocks of Cy (pure functions and actors)
   are chosen to be easily and accurately composable and highly testable.
 
-- Social, code management, and debugging facilities inherent in the platform.
+- Elegant support for the real-world process of developing and maintaining code, designed into
+  the platform from the very beginning.
 
 One reasonable way of looking at Cy is to see it as a language and platform that are driven from
 the ground up by the goal of realizing Bret Victor's vision of Learnable Programming.  Cy is
@@ -61,36 +62,36 @@ software pulls in examples of public games that proceeded from the current posit
 will even generate potential code to meet the developer's needs, much as chess software shows
 potential lines of play and their likely outcomes.  For example, when the developer starts writing a
 signature and contract for a function, the IDE will suggest existing functions in open-source code
-that have similar signatures contracts.  It will decorate each suggested function with its quality
-score and the developer's reputation and achievement scores.  The intended feel is much like how
-chess software shows potential lines of play with their statistics.
+that have similar signatures and contracts.  It will decorate each suggested function with its
+quality score and the developer's reputation and achievement scores.  The intended feel is much like
+how chess software shows potential lines of play with their statistics.
 
-The IDE will even suggest implementations of the function which combine small numbers of existing
+The IDE will even suggest implementations of the function that combine small numbers of existing
 functions to provide the specified signature and meet the contract.  The developer can navigate
 to examples in public source code that have combined those functions in that way.  The intended feel
-is much like how chess software shows references to published games which have proceeded from the
+is much like how chess software shows references to published games that have proceeded from the
 current board position or from a potential line of play.
 
 Platform Design
 ---------------
 
 From a linguistic perspective, Cy aspires to preserve the beauty of Haskell, but in a simpler and
-more approachable way.  From a Haskell perspective, every Cy function can be regarded as running in
-an ST monad (Haskell's "state transformer"), with language support for vars (variables) in that
-monad.  Instead of Haskell's IO monad, real-world effects are implemented in Cy as actors called
+more approachable way.  In Haskell terms, every Cy function can be regarded as running in an ST
+monad (Haskell's "state transformer"), with language support for vars (variables) in that monad.
+Instead of Haskell's IO monad, real-world effects are implemented in Cy as actors called
 "components".  Primitive IO operations are implemented underneath the Cy platform (in JavaScript)
 and wrapped in components.  This approach is motivated by the following reasoning:
 
 - There is great power in pure functions in a typed language.  They are highly composable, have
-  a natural first-pass specification in the function signature, are naturally specified further
+  a natural rough specification in the function signature, are naturally specified further
   by contracts, and define a highly searchable space of behaviors (ala Hoogle).
 
 - Programs must also have effects.  Since pure functions can't have effects, this forces a
   two-layer approach.  Haskell has proven that a two-layer approach can be practical and 
   beautiful.
 
-- However, Haskell's choice of the upper layer -- monads -- forces the programmer into intense
-  mathematical abstraction that only suits a small minority.
+- However, Haskell's choice of upper layer -- monads -- forces programmers into intense mathematical
+  abstraction that only suits a small minority of them.
 
 - Since we are required to have at least two layers, we'd like to do as much as possible with
   just two.  Cy takes the position that the most natural and capable upper layer is actors.
@@ -99,9 +100,9 @@ Control-flow monads (such as Maybe or List) can be implemented for use in "for" 
 can any other kind of monad other than IO, but the built-in support for stateful effects through
 vars and actors makes this less commonly necessary.
 
-The design of the Cy platform is also driven by a belief that support for the real-world process of
-developing and maintaining code is just as important as the language itself and deserves the same
-level of design attention from the very beginning:
+From a platform perspective, Cy is driven by a belief that support for the real-world process of
+developing and maintaining code is just as important as the language itself.  These platform
+elements deserve the same level of design attention from the very beginning:
 
 - API contracts and testing.
 - Publishing, versioning, and dependency management.
@@ -113,41 +114,6 @@ level of design attention from the very beginning:
 - Production deployment.
 
 
-Object Model
-------------
-Unlike Haskell, Cy does have a notion of objects, which borrows lightly from the OO world.
-However, Cy's notion of an object is extremely simple.  It is mostly light syntactic sugar
-over a Haskell-like functional model.
-
-There is no subclassing or inheritance. This is to avoid the complexity of covariance, type
-inference in the face of subclassing, etc. We aren't just being lazy; that complexity would spill
-over into the programmer's mental model and into error messages.
-
-Objects are immutable.
-
-Methods have the following special characteristics compared to regular functions:
-
-- A method is invoked with the usual special syntax: `x.m y z`
-
-- An object class can have private fields and methods, which a method can access.
-
-- An object class serves as a namespace for its methods, so the same method name
-  can be used in multiple object classes.
-
-- Methods provide the following notational convenience:
-
-  + A method takes a copy of the object on which it was invoked as an implicit first lvalue parameter;
-
-  + implicitly modifies that lvalue when it updates fields of the object;
-
-  + and implicitly returns that lvalue if it is declared to return the object's own type,
-    and if it ends with a statement instead of an expression.
-
-  + Plus, this implicit behavior extends to a method that invokes another method: the implicit
-    `this` lvalue is passed to the invoked method, and if that method returns a value of the same
-    type, the `this` lvalue is updated in the caller.
-     
-  
 Stackable Abstractions
 ----------------------
 The easiest way to explain stackable abstractions is to give a typical example of non-stackable
@@ -232,11 +198,48 @@ the major issues:
 - Cy provides built-in support for specifying and validating contracts at both the function
   level and the component level.
 
+
+Object Model
+------------
+Unlike Haskell, Cy does have a notion of objects, which borrows lightly from the OO world.
+However, Cy's notion of an object is extremely simple.  It is mostly light syntactic sugar
+over a Haskell-like functional model.
+
+There is no subclassing or inheritance. This is to avoid the complexity of covariance, type
+inference in the face of subclassing, etc. We aren't just being lazy; that complexity would spill
+over into the programmer's mental model and into error messages.
+
+Objects are immutable.
+
+Methods have the following special characteristics compared to regular functions:
+
+- A method is invoked with the usual special syntax: `x.m y z`
+
+- An object class can have private fields and methods, which a method can access.
+
+- An object class serves as a namespace for its methods, so the same method name
+  can be used in multiple object classes.
+
+- Methods provide the following notational convenience:
+
+  + A method takes a copy of the object on which it was invoked as an implicit first lvalue parameter;
+
+  + implicitly modifies that lvalue when it updates fields of the object;
+
+  + and implicitly returns that lvalue if it is declared to return the object's own type,
+    and if it ends with a statement instead of an expression.
+
+  + Plus, this implicit behavior extends to a method that invokes another method: the implicit
+    `this` lvalue is passed to the invoked method, and if that method returns a value of the same
+    type, the `this` lvalue is updated in the caller.
+     
+  
 License
 -------
 
 All files in this project (whether so marked or not) are Copyright (c) Dean Thompson and
 subject to the Apache 2 license: http://www.apache.org/licenses/LICENSE-2.0.html
+
 
 Documentation
 -------------
