@@ -4,7 +4,7 @@ Cy
 Cy is a language and platform designed from the ground up for "code mining" -- a planet-wide
 collaborative search through the space of useful software components.
 
-Lingustically, Cy aspires to preserve the beauty of Haskell, but in a simpler and more approachable
+Linguistically, Cy aspires to preserve the beauty of Haskell, but in a simpler and more approachable
 way.  Cy is a "low Haskell" world where the functions are pure, the statements have effects, and the
 monads live in "for" statements.
 
