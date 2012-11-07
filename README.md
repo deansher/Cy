@@ -22,9 +22,9 @@ planet-wide network of people and machines who take on the following five roles:
 - *Principal*: the primary author of a particular set of software components.
 
 - *Peer*: creates software and information for his own purposes, but that may be useful to the
-   principal.  (A peer acts as a Principal from the perspective of his own projects.)
+   Principal.  (A Peer acts as a Principal from the perspective of his own projects.)
 
-- *Freelancer*: assists the principal in a "work for hire" capacity, such as by coding to a spec or
+- *Freelancer*: assists the Principal in a "work for hire" capacity, such as by coding to a spec or
    generating test cases.  (A Freelancer acts as a Principal from the perspective of the tasks that
    he takes on.)
 
@@ -36,7 +36,7 @@ planet-wide network of people and machines who take on the following five roles:
 
 The Cy platform facilitates each of these five roles and the flow among them.  The goal is a
 seamless interplay across creation, discovery, and validation, and among highly skilled
-principals, relatively unskilled Randoms, and sophisticated but mechanical MAs.
+Principals, relatively unskilled Randoms, and sophisticated but mechanical MAs.
 
 For example, a Principal needs a UI component for creating a to-do item.  She begins writing some
 high-level documentation for this component.  An MA integrated into her IDE suggests an open source
@@ -87,8 +87,8 @@ Cy's design is driven by the main platform qualities required for Code Mining:
   clear, concise behavioral contract.  The basic building blocks of Cy (pure functions and actors)
   are chosen to be easily and accurately composable and highly testable.
 
-- Elegant support for the code-mining flow, which is considered equally important to the language
-  design and built into the platform from the very beginning.
+- Elegant support for the code-mining flow, which is the primary driver of the platform design
+  and the language design.
 
 One reasonable way of looking at Cy is to see it as a language and platform that are driven from the
 ground up by the goals of first realizing Bret Victor's vision of Learnable Programming and then
@@ -139,15 +139,16 @@ motivated by the following reasoning:
 - Since we are required to have at least two layers, we'd like to do as much as possible with
   just two.  Cy takes the position that the most natural and capable upper layer is actors.
 
-- RESTful components have proven to be an especially approachable subset of the more general space
-  of actors.
+- RESTful components have proven to be an especially approachable and widely applicable subset of
+  the more general space of actors.
 
 Cy supports control-flow monads (such as Maybe or List) in "for" statements.  In fact, Cy's "for"
 statement supports any type of monad except IO, but the built-in support for stateful effects
 through vars and actors greatly reduces the importance of monads for purposes other than control
 flow.
 
-Cy's support for the code-mining flow is just as important as the language itself.  This includes:
+The Cy language is designed for smooth interplay with the other Cy platform features needed to
+support effective code mining:
 
 - Reputation management and quality scoring.
 - Freelancing and crowd-sourcing.
@@ -170,7 +171,7 @@ Stackable Abstractions
 ----------------------
 The easiest way to explain stackable abstractions is to give a typical example of non-stackable
 abstractions.  This example uses Java's syntax, not because Java is any worse than most other
-platforms, but because I know it well.  Suppose we have the following classes Foo and Bar:
+platforms, but as a typical example.  Suppose we have the following classes Foo and Bar:
 
     /**
      * Data access layer for the "foo" db.  This class obtains the path of its configuration file
@@ -193,7 +194,7 @@ platforms, but because I know it well.  Suppose we have the following classes Fo
       Bar(URL serviceUrl, ConnectionParams params) { ... }
 
       /**
-       * Fetches the B values corresponding to a list of fs by making an RPC
+       * Fetches the B values corresponding to a list of F keys by making an RPC
        * to the bar service, which will internally obtain some database locks.
        */
       List<Integer> fetchBValues(List<String> fs) throws RpcException
