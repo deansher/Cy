@@ -59,12 +59,8 @@ langDef = LanguageDef { commentStart = "{-"
                       , opLetter = oneOf legalOperatorSubsequentChars
                       
                       -- Check these for completeness periodically.
-                      
-                      , reservedNames = [ "as", "export", "import", "module", "package"
-                                        ,"private", "public", "qualified"
-                                        ]
-                                        
-                      , reservedOpNames = [ ";", ",", ".", "=", "-", "+", "/" ]
+                      , reservedNames = reservedWords
+                      , reservedOpNames = reservedOperators
                       
                       , caseSensitive = True
                       , nestedComments = True
@@ -92,6 +88,7 @@ kwPublic = IT.reserved tokP "public"
 kwQualified = IT.reserved tokP "qualified"
 
 -- When modifying these, change langDef too.
+opAt = IT.reservedOp tokP "@"
 opColon = IT.reservedOp tokP ":"
 opComma = IT.reservedOp tokP ","
 opDot = IT.reservedOp tokP "."
@@ -162,15 +159,15 @@ publicOrPrivate = (try kwPublic >> return True) <|> (try kwPrivate >> return Fal
 
 orgName :: Parser OrgName
 orgName = do
-  name <- (try domainPlusUser <|> domainName)
+  name <- (try userAndDomain <|> domainName)
   return $! OrgName $ fromString name
 
-domainPlusUser :: Parser String
-domainPlusUser = do
-  domain <- domainName
-  opPlus
+userAndDomain :: Parser String
+userAndDomain = do
   user <- userName
-  return $! domain ++ "+" ++ user
+  sep <- (try opPlus >> return "+") <|> (try opAt >> return "@")
+  domain <- domainName
+  return $! user ++ sep ++ domain
 
 userName :: Parser String
 userName = do
@@ -398,7 +395,7 @@ randomLineEnding = do
            then do
              text <- randomTextAvoiding ["\n"]
              -- TODO: Be more sophisticated about when the space before is mandatory
-             -- (to separate the comment start from an operator).
+             -- (to separate the comment start from an operator)
              return $! spaces ++ " --" ++ text ++ "\n"
            else do
              le <- randomLineEnding

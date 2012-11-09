@@ -11,7 +11,9 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 module Cy.Language (
-    ModuleDecl(..)
+    reservedWords
+  , reservedOperators
+  , ModuleDecl(..)
   , ModuleId(..)
   , ModuleProperties(..)
   , OrgName(..)
@@ -52,6 +54,12 @@ import Data.Sequence (Seq)
 import Data.Foldable (toList)
 
 import Test.QuickCheck
+
+reservedWords = [ "as", "export", "import", "module", "package"
+                ,"private", "public", "qualified"
+                ]
+
+reservedOperators = [ "@", ";", ",", ".", "=", "-", "+", "/" ]
 
 data ModuleDecl = ModuleDecl {
     moduleId :: !ModuleId
@@ -163,7 +171,8 @@ instance Arbitrary OrgName where
     hasUserName <- arbitrary :: Gen Bool
     if hasUserName then do
       u <- arbitraryUserName
-      return $! OrgName $ fromString $ domain ++ "+" ++ u
+      sep <- elements ["+", "@"]
+      return $! OrgName $ fromString $ u ++ sep ++ domain
     else do
       return $! OrgName $ fromString $ domain
 
@@ -211,7 +220,11 @@ legalIdentifierFirstChars = concat [letters, "_"]
 legalIdentifierSubsequentChars = concat [letters, digits, "_"]
 
 arbitraryIdentifierName :: Gen String
-arbitraryIdentifierName = genIdent 8  legalIdentifierFirstChars legalIdentifierSubsequentChars
+arbitraryIdentifierName = do
+  name <- genIdent 8 legalIdentifierFirstChars legalIdentifierSubsequentChars
+  if name `elem` reservedWords
+  then arbitraryIdentifierName
+  else return $! name
 
 genIdent :: Int -> [Char] -> [Char] -> Gen [Char]
 genIdent maxLen legalFirsts legalRests = do
