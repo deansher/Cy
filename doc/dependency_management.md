@@ -1,8 +1,9 @@
 Cy Dependency Management
 ========================
 
-Each Cy package has a version number, with the semantics defined at http://semver.org/ (v2.0.0-rc.1).
-The version number is declared in the `package` statement at the top of the package definition file.
+Each Cy package has a version number with syntax and semantics defined at http://semver.org/
+(v2.0.0-rc.1).  The version number is declared in the `package` statement at the top of the package
+definition file.
 
 There is a central registry of all public Cy packages in github:
 `git@github.com:deansher/cy-packages.git`.  If you want to make your package public, submit a pull
@@ -10,33 +11,44 @@ request to update this registry.  (Include a suggestion for how to verify that y
 name or public website path used to construct the package names you are claiming.)
 
 The directory structure of the registry corresponds to Cy package structure, with each package
-`com.xyzzy.plugh` being represented by a file `plugh.txt` in the directory `com/xyzzy`. The file for
-a package has four whitespace-separated values on a single line with no other delimiters:
+`jack+advent.com/xyzzy/plugh` being represented by a "package registry file" `plugh.txt` in the
+directory `jack+advent.com/xyzzy`. Each line of a package registry file has four
+whitespace-separated values on a single line with no other delimiters:
 
-* the version-control system, which can currently only be git
+* the minimum version number covered by this line of the file
 
-* the URL of the repo containing the package
+* the URL of the repository containing the package (currently must be git)
 
-* the branch in that repo that contains the package
+* the branch in that repository that contains the package
 
-* the relative path of the package from the root of the repo, which should be the name of the
-  directory that contains at least `node-out`, and `browser-out`, that preferably contains `src` and
-  `README.md`, and that contains `contracts` if it does not contain `src`.  The root of the repo is
-  represented by ".".
+* the relative path from the root of the repo to a "Cy home directory" that contains at least
+  `node-out` and `browser-out`, that preferably contains `src` and `README.md`, and that contains
+  `contracts` if it does not contain `src`.  See the *Cy Source Structure* docs for more 
+  information about Cy home directories.
 
-If you want to release your package (or selected versions of it) locally (including within an
-organization), you can do this by creating a local directory tree that has the same structure as the
-public package registry and by providing the path of this local directory tree to the Cy compiler
-as --package-registry.  (This flag allows multiple local registry paths to be separated using the
-same convention for `NODE_PATH`.)
+The lines of a package registry file are ordered by descending minimum version number.
 
-For rapid iteration during development, Cy also maintains a file ~/.cy/package_repos.txt that
-maps package names to the paths of local repo checkouts for those packages.  The Cy compiler updates
-this file, but you can edit it by hand when necessary.  Each line simply contains a package name and
-a local filesystem path (to the directory containing `node-out`, `browser-out`, etc.), separated by
-whitespace with no additional delimeters.
+An individual or organization can manage private source code by creating a "local" registry with the
+same structure as the public package registry and by providing the url of this local registry
+repository to the Cy compiler in the `--package-registry` parameter.  Multiple package registries
+can be specified by providing this parameter multiple times, in which case all registries will be
+searched for each package.  It is an error for the same package to appear in multiple registries,
+even if one of those registries is the public registry.  (This means that the standard organization
+naming conventions must be followed even within local registries to avoid name collisions.)  This
+system permits organizations to host alternative public package registries as "local" registries,
+but that practice is discouraged.
 
-The Cy compiler provides a `check-repo` command that is intended for use as a pre-commit hook,
+For rapid iteration during development, the Cy compiler also supports a `--home` parameter, which is
+the local filesystem path of a Cy home directory.  This parameter can be provided multiple times to
+form a search path.  The Cy compiler looks for each package in these home directories before
+checking the package registries.  The nearest Cy home directory containing the current working
+directory is implicitly the first entry on the home directory search path.
+
+The Cy compiler assumes that the first home directory or package registry entry mentioning a given
+package contains (or refers to) the entire source for the package; it does not merge source from
+multiple Cy home directories within a single package.
+
+The Cy compiler provides a `verify` command that is intended for use as a pre-commit hook,
 and that verifies the following invariants on your repo:
 
 * You cannot modify a previously committed output file.  (Instead, you can create a new version.)
@@ -65,4 +77,4 @@ and that verifies the following invariants on your repo:
 * Unless the current source for a package has a new major version number, the current contract must
   be a superset of the previous contract.
 
-* Each package's current output files must meet the current contract.
+* Each package must meet its contract.
