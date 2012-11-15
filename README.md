@@ -1,10 +1,10 @@
 Cy
 ==
 
-Cy is a language and platform designed from the ground up for "code mining" -- a planet-wide
-collaborative search through the space of useful software components. This is an effort to reinvent
-the usability of programming just as radically as the iPhone reinvented the usability of consumer
-devices.
+Cy is an effort to reinvent the usability of programming just as radically as the iPhone reinvented
+the usability of consumer devices.  It is a language and platform designed from the ground up for
+"code mining" -- a planet-wide collaborative search through the space of useful software
+components.
 
 Linguistically, Cy aspires to preserve the beauty of Haskell, but in a simpler and more approachable
 way. Cy is a "low Haskell" world where the functions are pure, the statements have effects, and the
