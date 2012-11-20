@@ -39,6 +39,12 @@ trying constantly to pull us back to the status quo. Every time we "saved time" 
 exists, it would pull us off our path. It would change this from an effort to find several 10x gains
 into an effort to find several 10% gains.
 
+Here's another way to look at it: we will need all the creativity we can muster to drastically
+improve the experience of programming. The language is a huge part of this. As we experiment with
+the tool UI design, we will also have to experiment with the language design. If we accepted an
+existing language -- not designed for this purpose -- as a fixed point, my best intuition is that we
+couldn't pull it off.
+
 Nothing is going to make this easy. Nothing will change the fact that we begin with the odds
 overwhelmingly against us. But to have any chance at all, I feel strongly that we have to start with
 nothing but our experience and a few key principles, and then assemble a new programming world
