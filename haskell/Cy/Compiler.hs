@@ -27,7 +27,9 @@ main = do
   forM_ dirtyCurrentHomeModules $ \dirtyModule -> do
     rebuild dirtyModule
 
-data Module = Module
+data Module = Module {
+    moduleName :: String
+  }
 
 findCurrentHomeDir :: IO FilePath
 findCurrentHomeDir = getCurrentDirectory
@@ -39,7 +41,8 @@ findModules :: FilePath -> IO [Module]
 findModules homeDir = return []
 
 moduleIsDirty :: Module -> IO Bool
-moduleIsDirty m = return False
+moduleIsDirty m = return True
 
 rebuild :: Module -> IO ()
-rebuild m = return ()
+rebuild m = do
+  putStrLn $ "Rebuilt " ++ moduleName m
