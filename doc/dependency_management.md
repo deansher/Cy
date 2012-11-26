@@ -2,18 +2,18 @@ Cy Dependency Management
 ========================
 
 Each Cy package has a version number with syntax and semantics defined at http://semver.org/
-(v2.0.0-rc.1).  The version number is declared in the `package` statement at the top of the package
-definition file.
+(specifically the v2.0.0-rc.1 version of that standard).  The version number is declared in the
+`package` statement at the top of the package definition file.
 
 There is a central registry of all public Cy packages in github:
-`git@github.com:deansher/cy-packages.git`.  If you want to make your package public, submit a pull
+`https://github.com/Cy-Hub/cy-packages`.  If you want to make your package public, submit a pull
 request to update this registry.  (Include a suggestion for how to verify that you own the domain
 name or public website path used to construct the package names you are claiming.)
 
 The directory structure of the registry corresponds to Cy package structure, with each package
 `jack+advent.com/xyzzy/plugh` being represented by a "package registry file" `plugh.txt` in the
 directory `jack+advent.com/xyzzy`. Each line of a package registry file has four
-whitespace-separated values on a single line with no other delimiters:
+whitespace-separated values with no other delimiters:
 
 * the minimum version number covered by this line of the file
 
@@ -21,14 +21,14 @@ whitespace-separated values on a single line with no other delimiters:
 
 * the branch in that repository that contains the package
 
-* the relative path from the root of the repo to a "Cy home directory" that contains at least
+* the relative path from the root of the repo to a "Cy root directory" that contains at least
   `node-out` and `browser-out`, that preferably contains `src` and `README.md`, and that contains
   `contracts` if it does not contain `src`.  See the *Cy Source Structure* docs for more 
-  information about Cy home directories.
+  information about Cy root directories.
 
 The lines of a package registry file are ordered by descending minimum version number.
 
-An individual or organization can manage private source code by creating a "local" registry with the
+An individual or organization can manage private source code by creating a local registry with the
 same structure as the public package registry and by providing the url of this local registry
 repository to the Cy compiler in the `--package-registry` parameter.  Multiple package registries
 can be specified by providing this parameter multiple times, in which case all registries will be
@@ -38,18 +38,20 @@ naming conventions must be followed even within local registries to avoid name c
 system permits organizations to host alternative public package registries as "local" registries,
 but that practice is discouraged.
 
-For rapid iteration during development, the Cy compiler also supports a `--home` parameter, which is
-the local filesystem path of a Cy home directory.  This parameter can be provided multiple times to
-form a search path.  The Cy compiler looks for each package in these home directories before
-checking the package registries.  The nearest Cy home directory containing the current working
-directory is implicitly the first entry on the home directory search path.
+For rapid iteration during development, the Cy compiler also supports a `--root` parameter, which is
+the local filesystem path of a Cy root directory.  This parameter can be provided multiple times to
+form a search path.  The Cy compiler looks for each package in these root directories before
+checking the package registries.  The nearest Cy root directory containing the current working
+directory is implicitly the first entry on the root directory search path.
 
-The Cy compiler assumes that the first home directory or package registry entry mentioning a given
+The Cy compiler assumes that the first root directory or package registry entry mentioning a given
 package contains (or refers to) the entire source for the package; it does not merge source from
-multiple Cy home directories within a single package.
+multiple Cy root directories within a single package.
 
 The Cy compiler provides a `verify` command that is intended for use as a pre-commit hook,
 and that verifies the following invariants on your repo:
+
+* Every Cy source file in the repo must be contained in a well-formed Cy root directory.
 
 * You cannot modify a previously committed output file.  (Instead, you can create a new version.)
 

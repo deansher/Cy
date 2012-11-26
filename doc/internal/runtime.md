@@ -7,7 +7,7 @@ Cy compiles every source file for two different JavaScript environments: Node.js
 Compiling for Node.js
 ---------------------
 
-The Cy compiler generates Node JavaScript in a `node-out` subdirectory in the root of a Cy home
+The Cy compiler generates Node JavaScript in a `node-out` subdirectory in the root of a Cy root
 directory (parallel to the `src` directory). The `node-out` directory is then suitable for placing
 on your `NODE_PATH`.  Within `node-out`, the path elements are:
 
@@ -23,7 +23,7 @@ on your `NODE_PATH`.  Within `node-out`, the path elements are:
   top-level module of a package
 
 For example, if the organization is "cy-platform.org", the package name is "examples/chat", and the
-version is 1.0.0, then the path of the top-level package output relative to the Cy home directory is
+version is 1.0.0, then the path of the top-level package output relative to the Cy root directory is
 
   node-out/__cy/cy-platform.org/examples/chat/1.0.0/__package.js
 
