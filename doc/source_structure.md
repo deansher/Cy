@@ -15,25 +15,26 @@ A package name is a sequence of at least one Cy identifier, separated by slashes
 A module name is a Cy identifier, or empty for the top-level module of a package.
 
 There is a top-level module associated with every package, which is public and has no further
-module name.  A package may have additional public and private modules, which have names.
+module name. A package may have additional public and private modules, which have names. 
 
 Cy source code is stored in a filesystem directory called a "Cy root directory". This directory
 contains at least `node-out` and `browser-out`, preferably contains `src` and `README.md`, and
-contains `contracts` if it does not contain `src`.
+contains `contracts` if it does not contain `src`. The name `src` is reserved for this purpose, and
+cannot be used as an organization, package, or module name.
 
 The top-level module for (for example) a package with organization name "cy-platform.org" and
-package name "examples/chat" is defined in a single file 
+package name "examples/chat" is defined in a single file:
 
     $CY_ROOT_DIR/src/cy-platform.org/examples/chat.cy
 
-which must begin with a package declaration.
+This source file must begin with a package declaration.
 
 An additional public or private module for the above example with module name "mockclient" is
-defined in a single file 
+defined in a single file:
 
     $CY_ROOT_DIR/src/cy-platform.org/examples/chat/mockclient.cy
 
-which must begin with a module declaration.
+This source file must begin with a module declaration.
 
 Packages cannot be nested, even though their names and filesystem paths are organized
 hierarchically.  It is an error to declare `foo.com/bar/baz` as a package (by placing a package
